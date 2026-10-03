@@ -51,14 +51,19 @@ export const transporter = nodemailer.createTransport({
   debug: !config.isProduction,
 });
 
-// Verify connection
-transporter.verify((error: Error | null, success?: boolean) => {
-  if (error) {
-    console.error('❌ SMTP connection error:', error);
-  } else {
-    console.log('✅ Hostinger SMTP server is ready to send emails');
-  }
-});
+// Startup verification only runs when credentials exist; without them it can only fail, and the
+// order flows already tolerate a failed send. /smtp-test still checks SMTP on demand.
+if (config.emailUser && config.emailPassword) {
+  transporter.verify((error: Error | null, success?: boolean) => {
+    if (error) {
+      console.error('❌ SMTP connection error:', error);
+    } else {
+      console.log('✅ SMTP server is ready to send emails');
+    }
+  });
+} else {
+  console.log('ℹ️ SMTP not configured; startup verification skipped.');
+}
 
 // Helper function to format currency
 const formatCurrency = (amount: number): string => {
