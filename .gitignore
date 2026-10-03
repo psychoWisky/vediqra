@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Env files (but keep the .env.example templates committed)
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
+
+# Lock files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+**/package-lock.json
+**/yarn.lock
+**/pnpm-lock.yaml
+
+# Build
+dist/
+build/
+.vite/
+
+# Locally-stored uploads (images/videos saved by backend/src/utils/localStorage.ts)
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Logs
+*.log
+
+# Editor
+.vscode/
+.idea/
+.DS_Store
+
+admin.sql

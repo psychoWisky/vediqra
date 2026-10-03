@@ -1,0 +1,169 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ------------------------------------------------------------------------------------------------
+   VEDIQRA design tokens (RGB triplets so Tailwind opacity modifiers work: bg-brand-accent/10).
+   Palette: neutral surfaces, near-black ink, ONE accent (champagne gold, per the client's brand spec).
+     - brand-accent      : the brand's Champagne Gold (#D4AF5A) — fills and highlights on light or dark
+                           backgrounds (badges, rules, focus ring, logo). Matches the metallic gradient
+                           used in the VEDIQRA wordmark (#F7D77A -> #B8862D -> #FFE6A0).
+     - brand-accent-ink  : the same hue, darkened to pass 4.5:1 contrast as TEXT on white
+   ------------------------------------------------------------------------------------------------ */
+:root {
+  --brand-ink: 17 17 17;
+  --brand-ink-soft: 45 45 45;
+  --brand-surface: 255 255 255;
+  --brand-subtle: 247 246 243;
+  --brand-line: 229 226 219;
+  --brand-muted: 95 91 84;
+  --brand-accent: 212 175 90;
+  --brand-accent-ink: 139 105 20;
+  --brand-accent-soft: 251 245 225;
+  --brand-danger: 185 28 28;
+  --brand-success: 21 128 61;
+
+  /* layout rhythm */
+  --section-y: 3.5rem;          /* vertical padding of a page section (mobile) */
+  --section-y-md: 5rem;         /* ... from md up */
+  --header-h: 4rem;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply antialiased bg-brand-surface text-brand-ink font-sans;
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-heading tracking-tight;
+  }
+
+  /* one visible, consistent focus style for every interactive element */
+  :focus-visible {
+    outline: 2px solid rgb(var(--brand-accent-ink));
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+}
+
+/* ------------------------------------------------------------------------------------------------
+   UI primitives (used by components/ui/* and by existing pages through class names)
+   ------------------------------------------------------------------------------------------------ */
+@layer components {
+  .container-page { @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8; }
+
+  .section { padding-block: var(--section-y); }
+  @media (min-width: 768px) { .section { padding-block: var(--section-y-md); } }
+
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-lg px-5 py-3 text-sm font-semibold transition-colors
+    disabled:cursor-not-allowed disabled:opacity-50 min-h-[44px]; }
+  .btn-primary { @apply btn bg-brand-ink text-white hover:bg-brand-ink-soft; }
+  .btn-accent { @apply btn bg-brand-accent text-brand-ink hover:brightness-95; }
+  .btn-secondary { @apply btn border border-brand-ink/80 text-brand-ink bg-transparent hover:bg-brand-ink hover:text-white; }
+  .btn-ghost { @apply btn text-brand-ink hover:bg-brand-subtle; }
+  .btn-sm { @apply px-3 py-2 text-xs min-h-[36px]; }
+
+  .input { @apply w-full rounded-lg border border-brand-line bg-white px-4 py-3 text-sm text-brand-ink placeholder:text-brand-muted/70
+    focus:border-brand-ink focus:outline-none focus:ring-1 focus:ring-brand-ink; }
+
+  .card { @apply rounded-xl border border-brand-line bg-white shadow-card; }
+
+  .badge { @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none; }
+  .badge-neutral { @apply badge bg-brand-subtle text-brand-ink; }
+  .badge-accent { @apply badge bg-brand-accent-soft text-brand-accent-ink; }
+  .badge-dark { @apply badge bg-brand-ink text-white; }
+  .badge-danger { @apply badge bg-red-50 text-brand-danger; }
+
+  .eyebrow { @apply text-xs font-semibold uppercase tracking-[0.14em] text-brand-accent-ink; }
+
+  .line-clamp-1 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+}
+
+/* Custom animations */
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-premium-cream;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-premium-gold/30 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-premium-gold/50;
+}
+/* In your global CSS */
+.admin-nav-container {
+  max-width: calc(100vw - 300px);
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  padding-bottom: 4px;
+}
+
+.admin-nav-container::-webkit-scrollbar {
+  height: 4px;
+}
+
+.admin-nav-container::-webkit-scrollbar-thumb {
+  background: #D4AF37;
+  border-radius: 4px;
+}
+
+/* Add to your global CSS file */
+@layer utilities {
+  .line-clamp-1 {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
