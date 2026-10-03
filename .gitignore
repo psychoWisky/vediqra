@@ -10,11 +10,9 @@ node_modules/
 !.env.example
 !**/.env.example
 
-# Lock files
-package-lock.json
+# Lock files (package-lock.json is intentionally tracked; it is needed for `npm ci`)
 yarn.lock
 pnpm-lock.yaml
-**/package-lock.json
 **/yarn.lock
 **/pnpm-lock.yaml
 
