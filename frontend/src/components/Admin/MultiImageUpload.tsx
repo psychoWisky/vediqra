@@ -54,13 +54,19 @@ const MultiImageUpload: React.FC<MultiImageUploadProps> = ({
     setError(null);
   };
 
+  // Report the already-uploaded images (those with a URL) to the parent; pending local files have no URL yet.
+  const reportToParent = (list: ImageFile[]) => {
+    onImagesUploaded(list.filter(img => img.url).map(img => ({ url: img.url!, is_primary: img.is_primary })));
+  };
+
   const removeImage = (index: number) => {
     const newImages = images.filter((_, i) => i !== index);
     // If we removed the primary image, make the first one primary
     if (images[index]?.is_primary && newImages.length > 0) {
-      newImages[0].is_primary = true;
+      newImages[0] = { ...newImages[0], is_primary: true };
     }
     setImages(newImages);
+    reportToParent(newImages);
   };
 
   const setAsPrimary = (index: number) => {
@@ -69,6 +75,7 @@ const MultiImageUpload: React.FC<MultiImageUploadProps> = ({
       is_primary: i === index
     }));
     setImages(newImages);
+    reportToParent(newImages);
   };
 
   const uploadImages = async () => {

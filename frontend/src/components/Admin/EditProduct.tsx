@@ -27,18 +27,12 @@ const EditProduct: React.FC<EditProductProps> = ({ product, onClose, onSuccess }
   const [sizes, setSizes] = useState<ProductSize[]>(product.sizes || []);
   const [loadingVariants, setLoadingVariants] = useState(false);
 
-  const [productImages, setProductImages] = useState<{ url: string; is_primary: boolean }[]>([
-    { url: product.image_url, is_primary: true }
-  ]);
-
-  useEffect(() => {
-    if (product.additional_images && product.additional_images.length > 0) {
-      setProductImages([
-        { url: product.image_url, is_primary: true },
-        ...product.additional_images.map(url => ({ url, is_primary: false }))
-      ]);
-    }
-  }, [product]);
+  // Built synchronously so MultiImageUpload (which copies initialImages only once, on mount) receives the
+  // complete list on its first render. image_url is the primary; additional_images are the rest.
+  const [productImages, setProductImages] = useState<{ url: string; is_primary: boolean }[]>(() => {
+    const urls = Array.from(new Set([product.image_url, ...(product.additional_images || [])].filter(Boolean) as string[]));
+    return urls.map((url, i) => ({ url, is_primary: i === 0 }));
+  });
 
   useEffect(() => {
     if (product.categories && product.categories.length > 0) {
