@@ -250,7 +250,7 @@ const ComboPage: React.FC = () => {
                       <div className="flex items-start gap-3">
                         <div className="relative shrink-0">
                           <img src={getImageUrl(image)} alt="" className="h-16 w-16 rounded-lg object-cover" onError={(e) => { e.currentTarget.src = '/placeholder.svg'; }} />
-                          {ready && <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-brand-success text-white" aria-hidden="true"><Check className="h-3 w-3" /></span>}
+                          {ready && <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-brand-success text-[#111111]" aria-hidden="true"><Check className="h-3 w-3" /></span>}
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-start justify-between gap-2">
@@ -306,7 +306,7 @@ const ComboPage: React.FC = () => {
               <p className={`mt-3 text-sm font-medium ${outOfStock ? 'text-brand-danger' : 'text-brand-success'}`} role="status">{outOfStock ? 'Out of stock' : `Only ${stockLimit} available`}</p>
             )}
 
-            {formError && <p role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-medium text-brand-danger">{formError}</p>}
+            {formError && <p role="alert" className="mt-4 rounded-lg border border-brand-danger/40 bg-brand-danger/10 p-3 text-sm font-medium text-brand-danger">{formError}</p>}
 
             <button type="button" onClick={handleAdd} disabled={outOfStock || checking} className="btn-primary mt-4 w-full !min-h-[52px] text-base">
               <ShoppingBag className="h-5 w-5" aria-hidden="true" />

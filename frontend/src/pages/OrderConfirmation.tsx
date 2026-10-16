@@ -341,7 +341,7 @@ export default function OrderConfirmation() {
     <div className="container-page py-8 md:py-12">
       <div className="mx-auto max-w-3xl">
         <div className="text-center" role="status">
-          <span className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-50 text-brand-success" aria-hidden="true"><CheckCircle className="h-9 w-9" /></span>
+          <span className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-brand-success/15 text-brand-success" aria-hidden="true"><CheckCircle className="h-9 w-9" /></span>
           <h1 className="text-3xl font-extrabold sm:text-4xl">Thank you, your order is placed</h1>
           <p className="mt-2 text-brand-muted">We have received your order{order.customer_name ? `, ${order.customer_name.split(' ')[0]}` : ''}. A confirmation is sent to {order.customer_email || 'your email'}.</p>
         </div>

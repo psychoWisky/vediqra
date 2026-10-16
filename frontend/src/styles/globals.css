@@ -22,11 +22,50 @@
   --brand-accent-soft: 251 245 225;
   --brand-danger: 185 28 28;
   --brand-success: 21 128 61;
+  /* added with the dark theme; in the light defaults they equal what the old classes hard-coded */
+  --brand-elevated: 255 255 255;   /* cards, panels, drawers, modals */
+  --brand-input: 255 255 255;      /* form fields */
+  --brand-fill: 17 17 17;          /* emphasis fill (selected chips, primary button) */
+  --brand-fill-soft: 45 45 45;     /* hover of the above */
+  --brand-on-fill: 255 255 255;    /* text on --brand-fill */
+  --brand-panel: 17 17 17;         /* always-dark blocks (footer, "personalise" band) */
+  --shadow-card: 0 1px 2px rgb(17 17 17 / 0.05);
+  --shadow-pop: 0 12px 32px -8px rgb(17 17 17 / 0.18);
 
   /* layout rhythm */
   --section-y: 3.5rem;          /* vertical padding of a page section (mobile) */
   --section-y-md: 5rem;         /* ... from md up */
   --header-h: 4rem;
+}
+
+/* ------------------------------------------------------------------------------------------------
+   Storefront dark theme. Applied ONLY by adding `theme-dark` to <html> (Layout.tsx, plus an inline
+   script in index.html for first paint). The admin panel never gets the class, so it keeps the
+   light tokens above and is unchanged.
+   Palette: #0B0B0B page, #111 secondary, #171717 cards, #141414 inputs, #F5F5F5 text, #B3B3B3
+   secondary text, #303030 borders, gold #C9A646 (hover/text variant #D6B65F).
+   ------------------------------------------------------------------------------------------------ */
+:root.theme-dark {
+  color-scheme: dark;
+  --brand-ink: 245 245 245;
+  --brand-ink-soft: 214 214 214;
+  --brand-surface: 11 11 11;
+  --brand-subtle: 17 17 17;
+  --brand-line: 48 48 48;
+  --brand-muted: 179 179 179;
+  --brand-accent: 201 166 70;
+  --brand-accent-ink: 214 182 95;
+  --brand-accent-soft: 38 32 16;
+  --brand-danger: 248 113 113;
+  --brand-success: 74 222 128;
+  --brand-elevated: 23 23 23;
+  --brand-input: 20 20 20;
+  --brand-fill: 201 166 70;
+  --brand-fill-soft: 214 182 95;
+  --brand-on-fill: 17 17 17;
+  --brand-panel: 17 17 17;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.5);
+  --shadow-pop: 0 16px 40px -8px rgb(0 0 0 / 0.7);
 }
 
 @layer base {
@@ -65,22 +104,22 @@
 
   .btn { @apply inline-flex items-center justify-center gap-2 rounded-lg px-5 py-3 text-sm font-semibold transition-colors
     disabled:cursor-not-allowed disabled:opacity-50 min-h-[44px]; }
-  .btn-primary { @apply btn bg-brand-ink text-white hover:bg-brand-ink-soft; }
-  .btn-accent { @apply btn bg-brand-accent text-brand-ink hover:brightness-95; }
-  .btn-secondary { @apply btn border border-brand-ink/80 text-brand-ink bg-transparent hover:bg-brand-ink hover:text-white; }
-  .btn-ghost { @apply btn text-brand-ink hover:bg-brand-subtle; }
+  .btn-primary { @apply btn bg-brand-fill text-brand-on-fill hover:bg-brand-fill-soft; }
+  .btn-accent { @apply btn bg-brand-accent text-[#111111] hover:brightness-95; }
+  .btn-secondary { @apply btn border border-brand-ink/80 text-brand-ink bg-transparent hover:bg-brand-fill hover:text-brand-on-fill; }
+  .btn-ghost { @apply btn text-brand-ink hover:bg-brand-line/50; }
   .btn-sm { @apply px-3 py-2 text-xs min-h-[36px]; }
 
-  .input { @apply w-full rounded-lg border border-brand-line bg-white px-4 py-3 text-sm text-brand-ink placeholder:text-brand-muted/70
-    focus:border-brand-ink focus:outline-none focus:ring-1 focus:ring-brand-ink; }
+  .input { @apply w-full rounded-lg border border-brand-line bg-brand-input px-4 py-3 text-sm text-brand-ink placeholder:text-brand-muted/70
+    focus:border-brand-accent focus:outline-none focus:ring-1 focus:ring-brand-accent; }
 
-  .card { @apply rounded-xl border border-brand-line bg-white shadow-card; }
+  .card { @apply rounded-xl border border-brand-line bg-brand-elevated shadow-card; }
 
   .badge { @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none; }
-  .badge-neutral { @apply badge bg-brand-subtle text-brand-ink; }
+  .badge-neutral { @apply badge bg-brand-line/40 text-brand-ink; }
   .badge-accent { @apply badge bg-brand-accent-soft text-brand-accent-ink; }
-  .badge-dark { @apply badge bg-brand-ink text-white; }
-  .badge-danger { @apply badge bg-red-50 text-brand-danger; }
+  .badge-dark { @apply badge bg-brand-fill text-brand-on-fill; }
+  .badge-danger { @apply badge bg-brand-danger/15 text-brand-danger; }
 
   .eyebrow { @apply text-xs font-semibold uppercase tracking-[0.14em] text-brand-accent-ink; }
 
@@ -98,6 +137,12 @@
     -webkit-line-clamp: 2;
   }
 }
+
+/* dark scrollbars (storefront only; admin keeps the light ones below) */
+:root.theme-dark ::-webkit-scrollbar-track { background: rgb(11 11 11); }
+:root.theme-dark ::-webkit-scrollbar-thumb { background: rgb(201 166 70 / 0.35); }
+:root.theme-dark ::-webkit-scrollbar-thumb:hover { background: rgb(201 166 70 / 0.55); }
+:root.theme-dark { scrollbar-color: rgb(80 80 80) rgb(11 11 11); }
 
 /* Custom animations */
 .animate-slide-up {

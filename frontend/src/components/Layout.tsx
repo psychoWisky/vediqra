@@ -10,6 +10,7 @@ import Footer from './Footer';
 import { publicFetch } from '../utils/api';
 import { OPEN_CART_EVENT } from '../utils/cartUi';
 import { trackPageView } from '../utils/metaPixel';
+import { setStorefrontTheme } from '../utils/theme';
 
 const Layout: React.FC = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -32,6 +33,13 @@ const Layout: React.FC = () => {
     const onScroll = () => setShowBackToTop(window.scrollY > 600);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // Storefront dark theme: a class on <html> (not on a wrapper) so portaled modals/toasts and overscroll
+  // areas are themed too. Removed on unmount so the admin panel, which is a separate route, stays light.
+  useEffect(() => {
+    setStorefrontTheme(true);
+    return () => setStorefrontTheme(false);
   }, []);
 
   // A new page starts at the top (route changes only; ?query changes such as filters keep the position).
@@ -61,7 +69,7 @@ const Layout: React.FC = () => {
   }, []);
 
   return (
-    <div className="flex min-h-screen flex-col bg-white">
+    <div className="flex min-h-screen flex-col bg-brand-surface text-brand-ink">
       <Header logo={logo} onLogoError={() => setLogo(null)} onOpenCart={() => setIsCartOpen(true)} onOpenFAQ={() => setShowFAQ(true)} />
 
       <main id="main" tabIndex={-1} className="min-h-[60vh] flex-1 focus:outline-none">
@@ -86,7 +94,7 @@ const Layout: React.FC = () => {
           type="button"
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           aria-label="Back to top"
-          className="fixed bottom-20 right-4 z-20 lg:bottom-5 lg:right-5 flex h-11 w-11 items-center justify-center rounded-full bg-brand-ink text-white shadow-pop transition-colors hover:bg-brand-ink-soft"
+          className="fixed bottom-20 right-4 z-20 lg:bottom-5 lg:right-5 flex h-11 w-11 items-center justify-center rounded-full bg-brand-fill text-brand-on-fill shadow-pop transition-colors hover:bg-brand-fill-soft"
         >
           <ArrowUp className="h-5 w-5" aria-hidden="true" />
         </button>

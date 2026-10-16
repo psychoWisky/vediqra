@@ -180,7 +180,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({
             {currentHero.cta_text && currentHero.cta_link && (
               <a
                 href={currentHero.cta_link}
-                className={`inline-flex items-center px-8 py-4 bg-brand-ink text-white rounded-xl hover:bg-white hover:text-brand-ink transition-all duration-300 text-lg font-medium group ${
+                className={`inline-flex items-center px-8 py-4 bg-brand-accent text-[#111111] rounded-xl hover:bg-brand-accent-ink transition-all duration-300 text-lg font-medium group ${
                   alignment.text === 'text-center' ? 'mx-auto' : ''
                 }`}
               >
@@ -237,7 +237,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({
               onClick={() => setCurrentIndex(index)}
               className={`h-2 rounded-full transition-all ${
                 index === currentIndex
-                  ? 'w-8 bg-brand-ink'
+                  ? 'w-8 bg-brand-accent'
                   : 'w-2 bg-white/50 hover:bg-white/80'
               }`}
             />

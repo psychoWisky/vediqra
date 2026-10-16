@@ -50,15 +50,15 @@ const ProductGallery: React.FC<Props> = ({ images, alt, resetKey, badges }) => {
                 onError={() => setBroken((b) => ({ ...b, [index]: true }))}
                 className="h-full w-full object-cover"
               />
-              <span className="absolute bottom-3 right-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-brand-ink shadow" aria-hidden="true"><ZoomIn className="h-4 w-4" /></span>
+              <span className="absolute bottom-3 right-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white shadow" aria-hidden="true"><ZoomIn className="h-4 w-4" /></span>
             </button>
           )}
         </div>
         {badges && <div className="pointer-events-none absolute left-3 top-3 flex flex-col items-start gap-1.5">{badges}</div>}
         {count > 1 && (
           <>
-            <button type="button" onClick={() => go(-1)} aria-label="Previous image" className="absolute left-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 shadow hover:bg-white"><ChevronLeft className="h-5 w-5" aria-hidden="true" /></button>
-            <button type="button" onClick={() => go(1)} aria-label="Next image" className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 shadow hover:bg-white"><ChevronRight className="h-5 w-5" aria-hidden="true" /></button>
+            <button type="button" onClick={() => go(-1)} aria-label="Previous image" className="absolute left-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-white shadow hover:bg-black/80"><ChevronLeft className="h-5 w-5" aria-hidden="true" /></button>
+            <button type="button" onClick={() => go(1)} aria-label="Next image" className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-white shadow hover:bg-black/80"><ChevronRight className="h-5 w-5" aria-hidden="true" /></button>
           </>
         )}
       </div>
@@ -72,7 +72,7 @@ const ProductGallery: React.FC<Props> = ({ images, alt, resetKey, badges }) => {
                 onClick={() => setIndex(i)}
                 aria-label={`Show image ${i + 1} of ${count}`}
                 aria-current={i === index}
-                className={`h-16 w-16 overflow-hidden rounded-lg border-2 sm:h-20 sm:w-20 ${i === index ? 'border-brand-ink' : 'border-transparent opacity-80 hover:opacity-100'}`}
+                className={`h-16 w-16 overflow-hidden rounded-lg border-2 sm:h-20 sm:w-20 ${i === index ? 'border-brand-accent' : 'border-transparent opacity-80 hover:opacity-100'}`}
               >
                 <img src={getImageUrl(url)} alt="" loading="lazy" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.src = '/placeholder.svg'; }} />
               </button>

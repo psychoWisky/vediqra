@@ -21,6 +21,12 @@ export default {
           accent: 'rgb(var(--brand-accent) / <alpha-value>)',
           'accent-ink': 'rgb(var(--brand-accent-ink) / <alpha-value>)',
           'accent-soft': 'rgb(var(--brand-accent-soft) / <alpha-value>)',
+          elevated: 'rgb(var(--brand-elevated) / <alpha-value>)',
+          input: 'rgb(var(--brand-input) / <alpha-value>)',
+          fill: 'rgb(var(--brand-fill) / <alpha-value>)',
+          'fill-soft': 'rgb(var(--brand-fill-soft) / <alpha-value>)',
+          'on-fill': 'rgb(var(--brand-on-fill) / <alpha-value>)',
+          panel: 'rgb(var(--brand-panel) / <alpha-value>)',
           danger: 'rgb(var(--brand-danger) / <alpha-value>)',
           success: 'rgb(var(--brand-success) / <alpha-value>)',
         },
@@ -37,8 +43,8 @@ export default {
         heading: ['Inter', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
-        card: '0 1px 2px rgb(17 17 17 / 0.05)',
-        pop: '0 12px 32px -8px rgb(17 17 17 / 0.18)',
+        card: 'var(--shadow-card)',
+        pop: 'var(--shadow-pop)',
       },
       animation: {
         'fade-in': 'fadeIn 0.5s ease-in-out',

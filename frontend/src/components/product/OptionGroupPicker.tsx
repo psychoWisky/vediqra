@@ -73,7 +73,7 @@ const OptionGroupPicker: React.FC<Props> = ({ name, required, values, selectedId
                 htmlFor={inputId}
                 className={`relative flex min-h-[44px] cursor-pointer items-center gap-2 rounded-xl border-2 px-3 py-2 text-sm transition-colors
                   peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-accent-ink
-                  ${checked ? 'border-brand-ink bg-brand-subtle font-semibold' : 'border-brand-line hover:border-brand-ink/60'}
+                  ${checked ? 'border-brand-accent bg-brand-accent-soft font-semibold' : 'border-brand-line hover:border-brand-accent/60'}
                   ${soldOut ? 'cursor-not-allowed bg-brand-subtle/60 text-brand-muted' : ''} ${visual ? 'flex-col justify-center text-center' : ''}`}
               >
                 {v.image_url ? (
@@ -85,7 +85,7 @@ const OptionGroupPicker: React.FC<Props> = ({ name, required, values, selectedId
                 {modifier && !soldOut && <span className="text-xs font-medium text-brand-accent-ink">{modifier}</span>}
                 {soldOut && <span className="text-xs font-semibold">Sold out</span>}
                 {checked && (
-                  <span className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-brand-ink text-white" aria-hidden="true"><Check className="h-3 w-3" /></span>
+                  <span className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-brand-accent text-[#111111]" aria-hidden="true"><Check className="h-3 w-3" /></span>
                 )}
               </label>
             </div>

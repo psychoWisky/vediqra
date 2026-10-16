@@ -14,7 +14,7 @@ interface HeaderProps {
 }
 
 const navLink = ({ isActive }: { isActive: boolean }) =>
-  `rounded-lg px-3 py-2 text-sm font-semibold transition-colors hover:bg-brand-subtle ${isActive ? 'text-brand-ink' : 'text-brand-muted hover:text-brand-ink'}`;
+  `rounded-lg px-3 py-2 text-sm font-semibold transition-colors hover:bg-brand-line/50 ${isActive ? 'text-brand-accent-ink' : 'text-brand-muted hover:text-brand-ink'}`;
 
 /** Desktop search: a real <form> that opens the product listing with ?search=. */
 const SearchForm: React.FC<{ className?: string; autoFocus?: boolean; onDone?: () => void }> = ({ className = '', autoFocus, onDone }) => {
@@ -83,8 +83,8 @@ const Header: React.FC<HeaderProps> = ({ logo, onLogoError, onOpenCart, onOpenFA
 
   return (
     <>
-    <header className="sticky top-0 z-40 border-b border-brand-line bg-white/95 backdrop-blur">
-      <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-2 focus:z-50 focus:rounded-lg focus:bg-brand-ink focus:px-4 focus:py-2 focus:text-white">Skip to content</a>
+    <header className="sticky top-0 z-40 border-b border-brand-line bg-brand-surface/95 backdrop-blur">
+      <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-2 focus:z-50 focus:rounded-lg focus:bg-brand-fill focus:px-4 focus:py-2 focus:text-brand-on-fill">Skip to content</a>
       <div className="container-page flex h-16 items-center gap-3">
         {/* mobile menu button */}
         <button type="button" onClick={() => setMenuOpen(true)} aria-label="Open menu" aria-haspopup="dialog" className="btn-ghost -ml-2 !px-2 lg:hidden">
@@ -108,7 +108,7 @@ const Header: React.FC<HeaderProps> = ({ logo, onLogoError, onOpenCart, onOpenFA
               Shop <ChevronDown className={`h-4 w-4 transition-transform ${shopOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
             </button>
             {shopOpen && (
-              <div id="shop-menu" className="absolute left-0 top-full z-50 mt-1 w-[44rem] max-w-[calc(100vw-2rem)] rounded-xl border border-brand-line bg-white p-5 shadow-pop">
+              <div id="shop-menu" className="absolute left-0 top-full z-50 mt-1 w-[44rem] max-w-[calc(100vw-2rem)] rounded-xl border border-brand-line bg-brand-elevated p-5 shadow-pop">
                 {tree.length === 0 ? (
                   <p className="text-sm text-brand-muted">Categories will appear here.</p>
                 ) : (
@@ -146,7 +146,7 @@ const Header: React.FC<HeaderProps> = ({ logo, onLogoError, onOpenCart, onOpenFA
           <button type="button" onClick={onOpenCart} aria-label={`Open cart, ${itemCount} ${itemCount === 1 ? 'item' : 'items'}`} className="btn-ghost relative !px-2">
             <ShoppingBag className="h-6 w-6" aria-hidden="true" />
             {itemCount > 0 && (
-              <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-brand-accent px-1 text-[11px] font-bold text-brand-ink">{itemCount}</span>
+              <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-brand-accent px-1 text-[11px] font-bold text-[#111111]">{itemCount}</span>
             )}
           </button>
         </div>

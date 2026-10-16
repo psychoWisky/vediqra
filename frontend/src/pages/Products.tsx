@@ -263,7 +263,7 @@ const Products: React.FC = () => {
           <button
             onClick={() => setSelectedGender('all')}
             className={`px-3 py-1.5 rounded-full text-xs capitalize transition-colors ${
-              selectedGender === 'all' ? 'bg-brand-ink text-white' : 'bg-brand-subtle text-brand-ink hover:bg-brand-line'
+              selectedGender === 'all' ? 'bg-brand-fill text-brand-on-fill' : 'bg-brand-subtle text-brand-ink hover:bg-brand-line'
             }`}
           >All</button>
           {genders.map((gender) => (
@@ -271,7 +271,7 @@ const Products: React.FC = () => {
               key={gender.name}
               onClick={() => setSelectedGender(gender.name)}
               className={`px-3 py-1.5 rounded-full text-xs capitalize transition-colors flex items-center gap-1 ${
-                selectedGender === gender.name ? 'bg-brand-ink text-white' : 'bg-brand-subtle text-brand-ink hover:bg-brand-line'
+                selectedGender === gender.name ? 'bg-brand-fill text-brand-on-fill' : 'bg-brand-subtle text-brand-ink hover:bg-brand-line'
               }`}
             >
               {(gender as any).icon && <span>{(gender as any).icon}</span>}
@@ -361,7 +361,7 @@ const Products: React.FC = () => {
         <Modal isOpen={showFilters} onClose={() => setShowFilters(false)} title="Filters" placement="left">
           <div className="p-5 pb-0">
             <FilterContent />
-            <div className="sticky bottom-0 -mx-5 mt-6 flex gap-3 border-t border-brand-line bg-white p-4">
+            <div className="sticky bottom-0 -mx-5 mt-6 flex gap-3 border-t border-brand-line bg-brand-elevated p-4">
               <button type="button" onClick={clearFilters} className="btn-secondary flex-1">Reset</button>
               <button type="button" onClick={() => setShowFilters(false)} className="btn-primary flex-1">Show {filteredProducts.length} {filteredProducts.length === 1 ? 'product' : 'products'}</button>
             </div>

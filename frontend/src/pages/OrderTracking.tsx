@@ -80,9 +80,9 @@ const OrderTracking: React.FC = () => {
               <input id="tr-phone" type="tel" inputMode="numeric" className="input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="10-digit mobile number" autoComplete="tel-national" maxLength={10} />
             </div>
           </div>
-          {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-medium text-brand-danger" data-testid="track-error">{error}</p>}
+          {error && <p role="alert" className="rounded-lg border border-brand-danger/40 bg-brand-danger/10 p-3 text-sm font-medium text-brand-danger" data-testid="track-error">{error}</p>}
           <button type="submit" disabled={loading} className="btn-primary w-full">
-            {loading ? (<><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" /> Looking up…</>) : (<><Search className="h-4 w-4" aria-hidden="true" /> Track order</>)}
+            {loading ? (<><span className="h-4 w-4 animate-spin rounded-full border-2 border-current/30 border-t-current" aria-hidden="true" /> Looking up…</>) : (<><Search className="h-4 w-4" aria-hidden="true" /> Track order</>)}
           </button>
         </form>
 
@@ -112,7 +112,7 @@ const OrderTracking: React.FC = () => {
                     const done = i < stepIndex, current = i === stepIndex;
                     return (
                       <li key={s.key} aria-current={current ? 'step' : undefined} className="text-center">
-                        <span className={`mx-auto flex h-9 w-9 items-center justify-center rounded-full border-2 text-sm font-bold ${done ? 'border-brand-ink bg-brand-ink text-white' : current ? 'border-brand-ink bg-white text-brand-ink' : 'border-brand-line text-brand-muted'}`}>
+                        <span className={`mx-auto flex h-9 w-9 items-center justify-center rounded-full border-2 text-sm font-bold ${done ? 'border-brand-accent bg-brand-accent text-[#111111]' : current ? 'border-brand-accent bg-brand-elevated text-brand-accent-ink' : 'border-brand-line text-brand-muted'}`}>
                           {done ? <Check className="h-4 w-4" aria-hidden="true" /> : i + 1}
                         </span>
                         <span className={`mt-2 block text-xs ${current ? 'font-bold' : 'text-brand-muted'}`}>{s.label}<span className="sr-only">{done ? ' (completed)' : current ? ' (current step)' : ' (not yet)'}</span></span>

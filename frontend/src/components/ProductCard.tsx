@@ -98,7 +98,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                 aria-label={c.color_name}
                 aria-pressed={selectedColor === c.id}
                 title={c.color_name}
-                className={`h-5 w-5 rounded-full border ${selectedColor === c.id ? 'ring-2 ring-brand-ink ring-offset-1' : 'border-brand-line'}`}
+                className={`h-5 w-5 rounded-full border ${selectedColor === c.id ? 'ring-2 ring-brand-accent ring-offset-1' : 'border-brand-line'}`}
                 style={{ backgroundColor: c.color_code || '#ccc' }}
               />
             ))}

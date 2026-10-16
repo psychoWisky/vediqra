@@ -252,7 +252,7 @@ const Checkout: React.FC = () => {
         <div className="flex justify-between border-t border-brand-line pt-3 text-lg font-bold"><dt>Total</dt><dd data-testid="grand-total">{quote ? formatCurrency(quote.total_amount) : quoting ? 'Calculating…' : '—'}</dd></div>
       </dl>
       {quoteError && !quoting && !coupon && (
-        <p role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-medium text-brand-danger">{friendlyError(quoteError, 'We could not calculate your totals just now. Please try again in a moment.')}</p>
+        <p role="alert" className="mt-3 rounded-lg border border-brand-danger/40 bg-brand-danger/10 p-3 text-sm font-medium text-brand-danger">{friendlyError(quoteError, 'We could not calculate your totals just now. Please try again in a moment.')}</p>
       )}
     </div>
   );
@@ -300,7 +300,7 @@ const Checkout: React.FC = () => {
           <section className="card p-5" aria-labelledby="co-h3">
             <h2 id="co-h3" className="mb-3 flex items-center gap-2 text-lg font-bold"><Tag className="h-4 w-4" aria-hidden="true" /> Coupon</h2>
             {coupon ? (
-              <div className="flex items-center justify-between gap-3 rounded-lg border border-brand-success/40 bg-green-50 p-3" role="status">
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-brand-success/40 bg-brand-success/10 p-3" role="status">
                 <p className="flex items-center gap-2 text-sm"><CheckCircle2 className="h-5 w-5 text-brand-success" aria-hidden="true" /><span><strong>{coupon.code}</strong> applied{discount > 0 ? ` – you save ${formatCurrency(discount)}` : ''}</span></p>
                 <button type="button" onClick={removeCoupon} className="btn-ghost btn-sm" aria-label={`Remove coupon ${coupon.code}`}><X className="h-4 w-4" aria-hidden="true" /> Remove</button>
               </div>
@@ -328,8 +328,8 @@ const Checkout: React.FC = () => {
               ]).map((o) => (
                 <div key={o.value} className="relative">
                   <input id={`pay-${o.value}`} type="radio" name="payment" value={o.value} checked={method === o.value} onChange={() => setMethod(o.value)} className="peer sr-only" />
-                  <label htmlFor={`pay-${o.value}`} className={`flex min-h-[64px] cursor-pointer items-start gap-3 rounded-xl border-2 p-4 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-accent-ink ${method === o.value ? 'border-brand-ink bg-brand-subtle' : 'border-brand-line hover:border-brand-ink/60'}`}>
-                    <span aria-hidden="true" className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${method === o.value ? 'border-brand-ink' : 'border-brand-line'}`}>{method === o.value && <span className="h-2.5 w-2.5 rounded-full bg-brand-ink" />}</span>
+                  <label htmlFor={`pay-${o.value}`} className={`flex min-h-[64px] cursor-pointer items-start gap-3 rounded-xl border-2 p-4 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-accent-ink ${method === o.value ? 'border-brand-accent bg-brand-accent-soft' : 'border-brand-line hover:border-brand-accent/60'}`}>
+                    <span aria-hidden="true" className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${method === o.value ? 'border-brand-accent' : 'border-brand-line'}`}>{method === o.value && <span className="h-2.5 w-2.5 rounded-full bg-brand-accent" />}</span>
                     <span><span className="block text-sm font-semibold">{o.title}</span><span className="block text-xs text-brand-muted">{o.text}</span></span>
                   </label>
                 </div>
@@ -337,11 +337,11 @@ const Checkout: React.FC = () => {
             </div>
 
             <div ref={errorRef} aria-live="assertive">
-              {orderError && <p role="alert" className="mt-5 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-medium text-brand-danger" data-testid="order-error">{orderError}</p>}
+              {orderError && <p role="alert" className="mt-5 rounded-lg border border-brand-danger/40 bg-brand-danger/10 p-3 text-sm font-medium text-brand-danger" data-testid="order-error">{orderError}</p>}
             </div>
 
             <button type="submit" disabled={submitting} className="btn-primary mt-5 w-full !min-h-[52px] text-base" data-testid="place-order">
-              {submitting ? (<><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" /> {progress || 'Processing…'}</>) : (<><Lock className="h-4 w-4" aria-hidden="true" /> Place order{quote ? ` · ${formatCurrency(quote.total_amount)}` : ''}</>)}
+              {submitting ? (<><span className="h-4 w-4 animate-spin rounded-full border-2 border-current/30 border-t-current" aria-hidden="true" /> {progress || 'Processing…'}</>) : (<><Lock className="h-4 w-4" aria-hidden="true" /> Place order{quote ? ` · ${formatCurrency(quote.total_amount)}` : ''}</>)}
             </button>
             {method === 'online' && <p className="mt-2 text-center text-xs text-brand-muted">You will be taken to a secure payment window.</p>}
           </section>

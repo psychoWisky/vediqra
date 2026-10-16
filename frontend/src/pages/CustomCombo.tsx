@@ -286,7 +286,7 @@ const CustomCombo: React.FC = () => {
             <h2 className="flex items-center gap-2 text-lg font-bold"><Package className="h-5 w-5 text-brand-accent-ink" aria-hidden="true" /> Your combo</h2>
 
             {totalItems > 0 && (
-              <div className="rounded-xl bg-brand-ink p-4 text-white" role="status">
+              <div className="rounded-xl border border-brand-line bg-brand-panel p-4 text-white" role="status">
                 <p className="mb-2 flex items-center gap-2 text-sm font-semibold"><Sparkles className="h-4 w-4 text-brand-accent" aria-hidden="true" /> {tierPct > 0 ? `${tierPct}% discount applied` : 'Add more items to unlock a discount'}</p>
                 <p className="text-xs text-white/70">{totalItems} / {MAX_ITEMS} items selected</p>
               </div>
@@ -319,11 +319,11 @@ const CustomCombo: React.FC = () => {
                             ) : null}
                           </div>
                           <div className="flex shrink-0 items-center gap-1">
-                            <button type="button" onClick={() => updateQuantity(key, quantity - 1)} aria-label={`Decrease quantity of ${product.name}`} className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-white"><Minus className="h-3.5 w-3.5" aria-hidden="true" /></button>
+                            <button type="button" onClick={() => updateQuantity(key, quantity - 1)} aria-label={`Decrease quantity of ${product.name}`} className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-brand-line/50"><Minus className="h-3.5 w-3.5" aria-hidden="true" /></button>
                             <span className="w-6 text-center text-sm font-semibold" aria-live="polite">{quantity}</span>
-                            <button type="button" onClick={() => updateQuantity(key, quantity + 1)} disabled={totalItems >= MAX_ITEMS || (limit !== null && quantity >= limit)} aria-label={`Increase quantity of ${product.name}`} className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-white disabled:opacity-40"><Plus className="h-3.5 w-3.5" aria-hidden="true" /></button>
-                            {product.is_customizable && <button type="button" onClick={() => editCustomization(key)} aria-label={`Edit personalisation for ${product.name}`} className="flex h-9 w-9 items-center justify-center rounded-lg text-brand-accent-ink hover:bg-white"><Type className="h-3.5 w-3.5" aria-hidden="true" /></button>}
-                            <button type="button" onClick={() => removeLine(key)} aria-label={`Remove ${product.name} from combo`} className="flex h-9 w-9 items-center justify-center rounded-lg text-brand-danger hover:bg-white"><X className="h-3.5 w-3.5" aria-hidden="true" /></button>
+                            <button type="button" onClick={() => updateQuantity(key, quantity + 1)} disabled={totalItems >= MAX_ITEMS || (limit !== null && quantity >= limit)} aria-label={`Increase quantity of ${product.name}`} className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-brand-line/50 disabled:opacity-40"><Plus className="h-3.5 w-3.5" aria-hidden="true" /></button>
+                            {product.is_customizable && <button type="button" onClick={() => editCustomization(key)} aria-label={`Edit personalisation for ${product.name}`} className="flex h-9 w-9 items-center justify-center rounded-lg text-brand-accent-ink hover:bg-brand-line/50"><Type className="h-3.5 w-3.5" aria-hidden="true" /></button>}
+                            <button type="button" onClick={() => removeLine(key)} aria-label={`Remove ${product.name} from combo`} className="flex h-9 w-9 items-center justify-center rounded-lg text-brand-danger hover:bg-brand-line/50"><X className="h-3.5 w-3.5" aria-hidden="true" /></button>
                           </div>
                         </div>
                       </li>
@@ -348,7 +348,7 @@ const CustomCombo: React.FC = () => {
             )}
 
             {(addError || (quote.error && !quote.loading)) && (
-              <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-medium text-brand-danger">{addError || friendlyError(quote.error, 'We could not price this combo. Please check your selections.')}</p>
+              <p role="alert" className="rounded-lg border border-brand-danger/40 bg-brand-danger/10 p-3 text-sm font-medium text-brand-danger">{addError || friendlyError(quote.error, 'We could not price this combo. Please check your selections.')}</p>
             )}
 
             <button type="button" onClick={handleAddToCart} disabled={lines.size === 0 || quote.loading || committing} className="btn-primary w-full !min-h-[52px]">
@@ -368,9 +368,9 @@ const CustomCombo: React.FC = () => {
           </div>
 
           <div className="card mb-6 flex flex-wrap items-center gap-2 p-4 text-sm">
-            <button type="button" onClick={() => { setSelectedCategory(null); setSelectedGender('all'); }} aria-pressed={!selectedCategory} className={`rounded-full px-4 py-2 ${!selectedCategory ? 'bg-brand-ink text-white' : 'bg-brand-subtle hover:bg-brand-line'}`}>All categories</button>
-            {selectedCategory && <span className="rounded-full bg-brand-ink px-4 py-2 text-white">{selectedCategory.name}</span>}
-            {selectedGender !== 'all' && <span className="rounded-full bg-brand-ink px-4 py-2 capitalize text-white">{selectedGender}</span>}
+            <button type="button" onClick={() => { setSelectedCategory(null); setSelectedGender('all'); }} aria-pressed={!selectedCategory} className={`rounded-full px-4 py-2 ${!selectedCategory ? 'bg-brand-fill text-brand-on-fill' : 'bg-brand-subtle hover:bg-brand-line'}`}>All categories</button>
+            {selectedCategory && <span className="rounded-full bg-brand-fill px-4 py-2 text-brand-on-fill">{selectedCategory.name}</span>}
+            {selectedGender !== 'all' && <span className="rounded-full bg-brand-fill px-4 py-2 capitalize text-brand-on-fill">{selectedGender}</span>}
           </div>
 
           {!selectedCategory && !showSearchResults && (
@@ -392,8 +392,8 @@ const CustomCombo: React.FC = () => {
             <section className="mb-8" aria-labelledby="cc-gender-h">
               <h3 id="cc-gender-h" className="mb-3 flex items-center gap-2 text-sm font-bold"><Users className="h-4 w-4 text-brand-accent-ink" aria-hidden="true" /> Filter by</h3>
               <div className="flex flex-wrap gap-2" role="group" aria-labelledby="cc-gender-h">
-                <button type="button" onClick={() => setSelectedGender('all')} aria-pressed={selectedGender === 'all'} className={`rounded-full px-4 py-2 text-sm capitalize ${selectedGender === 'all' ? 'bg-brand-ink text-white' : 'bg-brand-subtle hover:bg-brand-line'}`}>All</button>
-                {genders.map((g) => <button key={g.name} type="button" onClick={() => setSelectedGender(g.name)} aria-pressed={selectedGender === g.name} className={`rounded-full px-4 py-2 text-sm capitalize ${selectedGender === g.name ? 'bg-brand-ink text-white' : 'bg-brand-subtle hover:bg-brand-line'}`}>{(g as any).icon} {g.display_name}</button>)}
+                <button type="button" onClick={() => setSelectedGender('all')} aria-pressed={selectedGender === 'all'} className={`rounded-full px-4 py-2 text-sm capitalize ${selectedGender === 'all' ? 'bg-brand-fill text-brand-on-fill' : 'bg-brand-subtle hover:bg-brand-line'}`}>All</button>
+                {genders.map((g) => <button key={g.name} type="button" onClick={() => setSelectedGender(g.name)} aria-pressed={selectedGender === g.name} className={`rounded-full px-4 py-2 text-sm capitalize ${selectedGender === g.name ? 'bg-brand-fill text-brand-on-fill' : 'bg-brand-subtle hover:bg-brand-line'}`}>{(g as any).icon} {g.display_name}</button>)}
               </div>
             </section>
           )}
@@ -418,7 +418,7 @@ const CustomCombo: React.FC = () => {
                   const soldOut = stock !== null && stock <= 0 && groups.every((g) => !g.is_required || chosen[g.id]);
                   const price = Number(product.price) + Number(product.customization_price || 0) + selected.reduce((s, o) => s + (Number(o.price_modifier) || 0), 0);
                   return (
-                    <article key={product.id} className={`card p-4 ${isInCombo ? 'border-brand-ink' : ''}`}>
+                    <article key={product.id} className={`card p-4 ${isInCombo ? 'border-brand-accent' : ''}`}>
                       <div className="flex flex-col gap-4 sm:flex-row">
                         <img src={getImageUrl(imageForChoices(product, chosen) || product.image_url)} alt="" className="h-40 w-full rounded-lg object-cover sm:h-24 sm:w-24" onError={(e) => { e.currentTarget.src = '/placeholder.svg'; }} />
                         <div className="min-w-0 flex-1">

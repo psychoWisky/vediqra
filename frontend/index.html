@@ -22,6 +22,10 @@
     <meta name="twitter:title" content="VEDIQRA">
     <meta name="twitter:description" content="VEDIQRA - personalised gifts and custom-printed products.">
     <title>VEDIQRA</title>
+    <!-- First-paint theme for the storefront (the admin panel at /admin stays light). Layout.tsx keeps the
+         class in sync afterwards for client-side navigation between storefront and admin. -->
+    <script>(function(){if(!/^\/admin\/?$/i.test(location.pathname)){document.documentElement.classList.add('theme-dark');var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content','#0B0B0B')}})()</script>
+    <style>html.theme-dark{background:#0B0B0B;color-scheme:dark}</style>
   </head>
   <body>
     <!-- Meta Pixel (if configured) is loaded from src/utils/metaPixel.ts, initialised once VITE_META_PIXEL_ID

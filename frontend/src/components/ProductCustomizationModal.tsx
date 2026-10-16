@@ -180,7 +180,7 @@ const ProductCustomizationModal: React.FC<ProductCustomizationModalProps> = ({
         </p>
 
         {(errors.text || errors.images || errors.upload) && (
-          <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-brand-danger">
+          <div role="alert" className="rounded-lg border border-brand-danger/40 bg-brand-danger/10 p-3 text-sm text-brand-danger">
             <p className="font-semibold">Please fix the following</p>
             <ul className="mt-1 list-disc pl-5">{errors.text && <li>{errors.text}</li>}{errors.images && <li>{errors.images}</li>}{errors.upload && <li>{errors.upload}</li>}</ul>
           </div>
@@ -267,7 +267,7 @@ const ProductCustomizationModal: React.FC<ProductCustomizationModalProps> = ({
           )}
         </div>
 
-        <div className="sticky bottom-0 -mx-5 -mb-5 flex gap-3 border-t border-brand-line bg-white p-4 sm:-mx-6 sm:-mb-5">
+        <div className="sticky bottom-0 -mx-5 -mb-5 flex gap-3 border-t border-brand-line bg-brand-elevated p-4 sm:-mx-6 sm:-mb-5">
           <button type="button" onClick={onClose} disabled={busy} className="btn-secondary">Cancel</button>
           <button type="button" onClick={submit} disabled={busy} className="btn-primary flex-1">
             {busy ? 'Uploading…' : forCombo ? 'Save personalisation' : `Add to cart${priced ? ` · ${formatCurrency(total)}` : ''}`}

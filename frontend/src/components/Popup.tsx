@@ -125,19 +125,19 @@ const Popup: React.FC<PopupProps> = ({ onClose }) => {
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
-          className="relative bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden"
+          className="relative bg-brand-elevated border border-brand-line rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Close Button */}
           <button
             onClick={onClose}
-            className="absolute top-3 right-3 z-10 p-1.5 bg-white/90 rounded-full shadow-md hover:bg-gray-100 transition-colors"
+            className="absolute top-3 right-3 z-10 p-1.5 bg-black/60 text-white rounded-full shadow-md hover:bg-black/80 transition-colors"
           >
             <X className="h-4 w-4" />
           </button>
 
           {/* Image Section */}
-          <div className="relative h-32 bg-brand-ink">
+          <div className="relative h-32 bg-brand-panel">
             {popup.image_url ? (
               <img
                 src={getImageUrl(popup.image_url)}
@@ -160,34 +160,34 @@ const Popup: React.FC<PopupProps> = ({ onClose }) => {
 
           {/* Content Section */}
           <div className="p-4">
-            <h3 className="font-bold text-gray-800 mb-1">{popup.title}</h3>
-            <p className="text-sm text-gray-600 mb-3">{popup.description}</p>
+            <h3 className="font-bold text-brand-ink mb-1">{popup.title}</h3>
+            <p className="text-sm text-brand-muted mb-3">{popup.description}</p>
 
             {/* Timer */}
             {popup.timer_enabled && (
               <div className="mb-3">
-                <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                <p className="text-xs text-brand-muted mb-1 flex items-center gap-1">
                   <Clock className="h-3 w-3" />
                   {popup.offer_text}
                 </p>
                 <div className="flex gap-1.5">
-                  <div className="flex-1 bg-gray-100 rounded-lg py-1.5 text-center">
-                    <span className="text-lg font-bold text-orange-500">
+                  <div className="flex-1 bg-brand-line/40 rounded-lg py-1.5 text-center">
+                    <span className="text-lg font-bold text-brand-accent-ink">
                       {String(timeLeft.hours).padStart(2, '0')}
                     </span>
-                    <span className="text-xs text-gray-500 block">hrs</span>
+                    <span className="text-xs text-brand-muted block">hrs</span>
                   </div>
-                  <div className="flex-1 bg-gray-100 rounded-lg py-1.5 text-center">
-                    <span className="text-lg font-bold text-orange-500">
+                  <div className="flex-1 bg-brand-line/40 rounded-lg py-1.5 text-center">
+                    <span className="text-lg font-bold text-brand-accent-ink">
                       {String(timeLeft.minutes).padStart(2, '0')}
                     </span>
-                    <span className="text-xs text-gray-500 block">min</span>
+                    <span className="text-xs text-brand-muted block">min</span>
                   </div>
-                  <div className="flex-1 bg-gray-100 rounded-lg py-1.5 text-center">
-                    <span className="text-lg font-bold text-orange-500">
+                  <div className="flex-1 bg-brand-line/40 rounded-lg py-1.5 text-center">
+                    <span className="text-lg font-bold text-brand-accent-ink">
                       {String(timeLeft.seconds).padStart(2, '0')}
                     </span>
-                    <span className="text-xs text-gray-500 block">sec</span>
+                    <span className="text-xs text-brand-muted block">sec</span>
                   </div>
                 </div>
               </div>
@@ -196,7 +196,7 @@ const Popup: React.FC<PopupProps> = ({ onClose }) => {
             {/* CTA Button */}
             <button
               onClick={handleCTAClick}
-              className="w-full bg-orange-500 text-white py-2.5 rounded-lg font-medium text-sm hover:bg-orange-600 transition-colors flex items-center justify-center gap-1.5"
+              className="w-full bg-brand-accent text-[#111111] py-2.5 rounded-lg font-medium text-sm hover:bg-brand-accent-ink transition-colors flex items-center justify-center gap-1.5"
             >
               <Gift className="h-4 w-4" />
               {popup.cta_text} • {popup.cash_on_delivery_text}
@@ -204,7 +204,7 @@ const Popup: React.FC<PopupProps> = ({ onClose }) => {
 
             {/* Prepaid Discount */}
             {popup.prepaid_discount_text && (
-              <p className="text-xs text-center text-green-600 mt-2">
+              <p className="text-xs text-center text-brand-success mt-2">
                 💳 {popup.prepaid_discount_text}
               </p>
             )}

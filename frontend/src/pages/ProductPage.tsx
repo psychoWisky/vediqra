@@ -360,7 +360,7 @@ const ProductPage: React.FC = () => {
                 </div>
               </div>
 
-              {formError && <p role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-medium text-brand-danger" data-testid="form-error">{formError}</p>}
+              {formError && <p role="alert" className="mt-4 rounded-lg border border-brand-danger/40 bg-brand-danger/10 p-3 text-sm font-medium text-brand-danger" data-testid="form-error">{formError}</p>}
 
               <button type="button" onClick={handleAdd} disabled={outOfStock || adding} aria-disabled={outOfStock || adding} className="btn-primary mt-4 w-full !min-h-[52px] text-base">
                 <ShoppingBag className="h-5 w-5" aria-hidden="true" />
@@ -382,7 +382,7 @@ const ProductPage: React.FC = () => {
               <div role="tablist" aria-label="Product information" className="mb-4 flex gap-1 border-b border-brand-line">
                 {(['details', 'reviews'] as const).map((t) => (
                   <button key={t} type="button" role="tab" id={`tab-${t}`} aria-selected={tab === t} aria-controls={`panel-${t}`} onClick={() => setTab(t)}
-                    className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-semibold capitalize ${tab === t ? 'border-brand-ink text-brand-ink' : 'border-transparent text-brand-muted hover:text-brand-ink'}`}>
+                    className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-semibold capitalize ${tab === t ? 'border-brand-accent text-brand-ink' : 'border-transparent text-brand-muted hover:text-brand-ink'}`}>
                     {t}{t === 'reviews' && reviews.length > 0 ? ` (${reviews.length})` : ''}
                   </button>
                 ))}
@@ -409,7 +409,7 @@ const ProductPage: React.FC = () => {
 
       {/* sticky purchase bar on small screens, only while the main buy box is out of view */}
       {!buyBoxVisible && !showCustomization && (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-brand-line bg-white/95 p-3 backdrop-blur lg:hidden" data-testid="sticky-buy">
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-brand-line bg-brand-surface/95 p-3 backdrop-blur lg:hidden" data-testid="sticky-buy">
           <div className="container-page flex items-center gap-3 !px-1">
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold">{product.name}</p>

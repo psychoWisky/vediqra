@@ -58,12 +58,12 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
     ? `fixed inset-0 z-[60] flex ${placement === 'right' ? 'justify-end' : 'justify-start'}`
     : 'fixed inset-0 z-[60] flex items-end justify-center sm:items-center sm:p-4';
   const panel = isDrawer
-    ? `relative flex h-full w-full max-w-md flex-col bg-white shadow-pop focus:outline-none`
-    : `relative flex max-h-[90vh] w-full ${widthClass} flex-col rounded-t-2xl bg-white shadow-pop focus:outline-none sm:rounded-2xl`;
+    ? `relative flex h-full w-full max-w-md flex-col border-l border-brand-line bg-brand-elevated shadow-pop focus:outline-none`
+    : `relative flex max-h-[90vh] w-full ${widthClass} flex-col rounded-t-2xl border border-brand-line bg-brand-elevated shadow-pop focus:outline-none sm:rounded-2xl`;
 
   return (
     <div className={wrapper} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="absolute inset-0 bg-brand-ink/50" aria-hidden="true" onMouseDown={onClose} />
+      <div className="absolute inset-0 bg-black/70" aria-hidden="true" onMouseDown={onClose} />
       <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className={panel}>
         <div className="flex items-center justify-between border-b border-brand-line px-5 py-4 sm:px-6">
           <h2 id={titleId} className={hideTitle ? 'sr-only' : 'text-lg font-bold'}>{title}</h2>

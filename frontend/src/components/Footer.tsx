@@ -27,7 +27,7 @@ const Footer: React.FC<FooterProps> = ({ logo, onLogoError, onOpenFAQ, onOpenShi
   const hasContact = Boolean(BRAND.supportEmail || BRAND.supportPhone);
 
   return (
-    <footer className="bg-brand-ink text-white">
+    <footer className="border-t border-brand-line bg-brand-panel text-white">
       <div className="container-page grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <Link to="/" onClick={() => window.scrollTo(0, 0)} aria-label="VEDIQRA home" className="inline-block">
@@ -38,7 +38,7 @@ const Footer: React.FC<FooterProps> = ({ logo, onLogoError, onOpenFAQ, onOpenShi
             <ul className="mt-5 flex gap-3">
               {socials.map((s) => (
                 <li key={s.label}>
-                  <a href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.label} className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 transition-colors hover:bg-brand-accent hover:text-brand-ink">{s.icon}</a>
+                  <a href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.label} className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 transition-colors hover:bg-brand-accent hover:text-[#111111]">{s.icon}</a>
                 </li>
               ))}
             </ul>

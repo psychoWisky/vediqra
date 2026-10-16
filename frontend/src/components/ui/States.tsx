@@ -25,7 +25,7 @@ export const EmptyState: React.FC<StateProps & { icon?: React.ReactNode }> = ({ 
 );
 
 export const ErrorState: React.FC<StateProps> = ({ title, description, action }) => (
-  <div role="alert" className="flex flex-col items-center justify-center rounded-xl border border-red-200 bg-red-50/60 px-6 py-14 text-center">
+  <div role="alert" className="flex flex-col items-center justify-center rounded-xl border border-brand-danger/40 bg-brand-danger/10 px-6 py-14 text-center">
     <AlertTriangle className="mb-4 h-10 w-10 text-brand-danger" aria-hidden="true" />
     <p className="text-base font-semibold">{title}</p>
     {description && <p className="mt-1 max-w-md text-sm text-brand-muted">{description}</p>}

@@ -100,7 +100,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
             ))}
           </ul>
 
-          <div className="sticky bottom-0 space-y-3 border-t border-brand-line bg-white p-5">
+          <div className="sticky bottom-0 space-y-3 border-t border-brand-line bg-brand-elevated p-5">
             <dl className="space-y-1.5 text-sm" aria-live="polite" aria-busy={quoting}>
               <div className="flex justify-between"><dt className="text-brand-muted">Subtotal</dt><dd>{formatCurrency(online?.subtotal ?? total)}</dd></div>
               {online && <div className="flex justify-between"><dt className="text-brand-muted">Shipping</dt><dd>{online.shipping_charge > 0 ? formatCurrency(online.shipping_charge) : 'Free'}</dd></div>}

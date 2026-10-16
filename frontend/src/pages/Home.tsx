@@ -107,7 +107,7 @@ const Home: React.FC = () => {
               </div>
             </div>
             {/* image slot: replaced by real VEDIQRA photography (Admin > Marketing > Hero) */}
-            <div aria-hidden="true" className="mx-auto flex aspect-[4/3] w-full max-w-md items-center justify-center rounded-2xl border border-brand-line bg-white">
+            <div aria-hidden="true" className="mx-auto flex aspect-[4/3] w-full max-w-md items-center justify-center rounded-2xl border border-brand-line bg-brand-elevated">
               <span className="text-8xl font-extrabold text-brand-accent/70">V</span>
             </div>
           </div>
@@ -130,7 +130,7 @@ const Home: React.FC = () => {
           <ul className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
             {tree.map((parent) => (
               <li key={parent.id}>
-                <Link to={categoryLink(parent)} className="card group flex h-full flex-col overflow-hidden transition-colors hover:border-brand-ink">
+                <Link to={categoryLink(parent)} className="card group flex h-full flex-col overflow-hidden transition-colors hover:border-brand-accent">
                   <div className="flex h-24 items-center justify-center bg-brand-subtle sm:h-28"><CategoryVisual category={parent} /></div>
                   <div className="flex flex-1 flex-col p-4">
                     <h3 className="text-sm font-bold sm:text-base">{parent.name}</h3>
@@ -172,7 +172,7 @@ const Home: React.FC = () => {
       </section>
 
       {/* 4. Personalisation */}
-      <section className="bg-brand-ink text-white" aria-labelledby="home-personalise">
+      <section className="border-y border-brand-line bg-brand-panel text-white" aria-labelledby="home-personalise">
         <div className="container-page section grid gap-10 md:grid-cols-2 md:items-center">
           <div>
             <p className="eyebrow !text-brand-accent mb-3">Personalisation</p>
@@ -187,7 +187,7 @@ const Home: React.FC = () => {
               { icon: <PenLine className="h-5 w-5" aria-hidden="true" />, title: 'Add your text', text: 'Write the names, dates or message you want printed.' },
             ].map((step, i) => (
               <li key={step.title} className="flex gap-4 rounded-xl border border-white/10 p-4">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-accent text-brand-ink">{step.icon}</span>
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-accent text-[#111111]">{step.icon}</span>
                 <div><p className="font-semibold"><span className="mr-2 text-white/40">{i + 1}.</span>{step.title}</p><p className="text-sm text-white/70">{step.text}</p></div>
               </li>
             ))}

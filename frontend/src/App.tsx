@@ -1,8 +1,9 @@
 import React, { useEffect, Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { CartProvider } from './context/CartContext';
 import { initMetaPixel } from './utils/metaPixel';
+import { isAdminPath } from './utils/theme';
 import Layout from './components/Layout';
 import './styles/globals.css';
 
@@ -28,6 +29,24 @@ const RouteFallback: React.FC = () => (
   </div>
 );
 
+// Storefront toasts follow the dark theme; the admin panel (/admin) keeps react-hot-toast's default light look.
+const ThemedToaster: React.FC = () => {
+  const isAdmin = isAdminPath(useLocation().pathname);
+  return (
+    <Toaster
+      position="bottom-center"
+      containerStyle={{ bottom: 84 }}
+      toastOptions={{
+        duration: 4000,
+        ...(isAdmin ? {} : {
+          style: { background: '#171717', color: '#F5F5F5', border: '1px solid #303030' },
+          iconTheme: { primary: '#C9A646', secondary: '#111111' },
+        }),
+      }}
+    />
+  );
+};
+
 function App() {
   useEffect(() => {
     initMetaPixel();
@@ -37,7 +56,7 @@ function App() {
     <Router>
       <CartProvider>
         {/* Every toast in the app (errors, coupon results, confirmations) needs a mounted Toaster to be visible. */}
-        <Toaster position="bottom-center" containerStyle={{ bottom: 84 }} toastOptions={{ duration: 4000 }} />
+        <ThemedToaster />
         <Suspense fallback={<RouteFallback />}>
           <Routes>
             {/* Routes with Layout */}
