@@ -11,7 +11,16 @@ export const BRAND = {
   // Neutral descriptor built only from what the catalogue is (personalised / custom products).
   tagline: 'Personalised gifts and custom-printed products.',
   supportEmail: clean(env.VITE_SUPPORT_EMAIL),
-  supportPhone: clean(env.VITE_SUPPORT_PHONE),
+  // VITE_SUPPORT_PHONE overrides the default below.
+  supportPhone: clean(env.VITE_SUPPORT_PHONE) || '9163169689',
+  // Business address, one entry per displayed line (exact wording as supplied by the client).
+  address: [
+    '8, block-e, 252, Solua dashadrone',
+    'Opposite lane of SBI Bank',
+    'Ground floor',
+    'Near vip sweets lane',
+    'Kolkata 700136',
+  ],
   websiteUrl: clean(env.VITE_WEBSITE_URL),
   // Meta (Facebook) Pixel ID. Empty = analytics disabled entirely (see utils/metaPixel.ts) — there is
   // no default/fallback ID shipped, so a fresh checkout never reports to someone else's ad account.

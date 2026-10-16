@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Instagram, Mail, Phone } from 'lucide-react';
+import { Instagram, Mail, MapPin, Phone } from 'lucide-react';
 import { BRAND } from '../config/brand';
 import { useCategoryTree, categoryLink } from '../hooks/useCategoryTree';
 import Logo from './Logo';
@@ -24,7 +24,7 @@ const Footer: React.FC<FooterProps> = ({ logo, onLogoError, onOpenFAQ, onOpenShi
     { label: 'YouTube', href: BRAND.social.youtube, icon: <span className="text-xs font-bold" aria-hidden="true">YT</span> },
     { label: 'X', href: BRAND.social.x, icon: <span className="text-sm font-bold" aria-hidden="true">X</span> },
   ].filter((s) => s.href);
-  const hasContact = Boolean(BRAND.supportEmail || BRAND.supportPhone);
+  const hasContact = Boolean(BRAND.supportEmail || BRAND.supportPhone || BRAND.address.length);
 
   return (
     <footer className="border-t border-brand-line bg-brand-panel text-white">
@@ -71,6 +71,9 @@ const Footer: React.FC<FooterProps> = ({ logo, onLogoError, onOpenFAQ, onOpenShi
           <h2 className={headCls}>Contact</h2>
           {hasContact ? (
             <ul className="space-y-3">
+              {BRAND.address.length > 0 && (
+                <li className="flex items-start gap-3 text-sm text-white/70"><MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /><address className="not-italic">{BRAND.address.map((line) => <span key={line} className="block">{line}</span>)}</address></li>
+              )}
               {BRAND.supportEmail && (
                 <li className="flex items-center gap-3 text-sm text-white/70"><Mail className="h-4 w-4 shrink-0" aria-hidden="true" /><a href={`mailto:${BRAND.supportEmail}`} className="hover:text-white">{BRAND.supportEmail}</a></li>
               )}
@@ -84,7 +87,7 @@ const Footer: React.FC<FooterProps> = ({ logo, onLogoError, onOpenFAQ, onOpenShi
         </div>
       </div>
       <div className="border-t border-white/10">
-        <div className="container-page py-6 text-center text-xs text-white/50">© {new Date().getFullYear()} {BRAND.name}. All rights reserved.</div>
+        <div className="container-page py-6 text-center text-xs text-white/50">© {new Date().getFullYear()} {BRAND.name}. All rights reserved. <span className="whitespace-nowrap">Developed by <span className="text-brand-accent-ink">GOBT</span>.</span></div>
       </div>
     </footer>
   );
