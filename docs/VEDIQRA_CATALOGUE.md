@@ -133,7 +133,7 @@ None exist yet. Needed before launch:
 - Stock is taken **atomically when the order is saved**, inside the order transaction: a conditional
   `UPDATE ... WHERE stock >= quantity` per row. Simultaneous orders queue on the row, so a unit cannot be sold twice.
   If any part of the order fails, every decrement is rolled back.
-- **Cash on delivery:** the order is saved (and stock taken) when the customer places it.
+- **Cash on delivery:** no longer offered (removed; the old orders that used it are kept as they were).
 - **Online payment (Razorpay):** nothing is reserved when the Razorpay order is created, because the customer may
   never pay. Stock is taken when the *paid* order is saved. If it sold out in between, the payment is refunded
   automatically (best effort; if the refund call fails, the error is logged with the payment id for manual refund
@@ -152,7 +152,7 @@ None exist yet. Needed before launch:
 6. Which products can be personalised, with what limits and fees. (section 5)
 7. Photos, category imagery and artwork requirements. (section 6)
 8. Stock policy: made to order, or real stock counts for some items?
-9. Shipping and cash-on-delivery charges (currently the old GFTD defaults: ₹79 under ₹499, ₹49 COD fee).
+9. Shipping charge (currently the old GFTD defaults: ₹79 under ₹499). Cash on delivery no longer exists.
 
 ## 9. Do not start until the client has confirmed
 

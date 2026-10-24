@@ -3,13 +3,9 @@ import { pool } from '../utils/db';
 import { requireAuth } from '../middleware/auth';
 import { orderLimiter } from '../middleware/rateLimit';
 import { priceCart, PricingError } from '../services/pricing';
-import { cleanCustomer, createOrder, applyAdminOrderUpdate } from '../services/orderService';
+import { applyAdminOrderUpdate } from '../services/orderService';
 import { isUuid, ORDER_STATUSES } from '../utils/sql';
-import {
-  sendOrderConfirmationEmail,
-  sendAdminNotification,
-  sendOrderStatusUpdateEmail,
-} from '../services/gmailService';
+import { sendOrderStatusUpdateEmail } from '../services/gmailService';
 
 const router = express.Router();
 
@@ -99,24 +95,24 @@ router.get('/confirmation/:id', async (req: Request, res: Response) => {
 // PUBLIC (rate limited): price a cart on the server so the checkout page shows the amounts that will be charged.
 router.post('/quote', orderLimiter, async (req: Request, res: Response) => {
   try {
-    const { items, coupon_code, email, payment_method } = req.body || {};
+    // Online payment is the only payment method, so every quote is an online quote. A client that still sends
+    // payment_method (older cached storefronts do) is simply priced as online: there is no COD fee to apply.
+    const { items, coupon_code, email } = req.body || {};
     const quote = await priceCart(pool, items, {
       couponCode: coupon_code,
       email: typeof email === 'string' ? email.trim().toLowerCase() : undefined,
-      paymentMethod: payment_method === 'cod' ? 'cod' : 'online',
+      paymentMethod: 'online',
     });
     res.json({
       subtotal: quote.subtotal,
       shipping_charge: quote.shipping_charge,
-      cod_charge: quote.cod_charge,
       coupon: quote.coupon,
       coupon_discount: quote.coupon_discount,
       total_amount: quote.total_amount,
-      // Configured checkout rules (not secrets): lets the frontend show the actual shipping/COD rules
-      // instead of keeping its own copy, and derive a COD estimate from one 'online' quote instead of two calls.
+      // Configured checkout rules (not secrets): lets the frontend show the actual shipping rule instead of
+      // keeping its own copy.
       shipping_threshold: quote.shipping_threshold,
       shipping_fee: quote.shipping_fee,
-      cod_fee: quote.cod_fee,
       // Priced lines (server-computed price, and for a custom combo its base_price/discount_percentage before
       // the tier discount). Nothing here is more sensitive than what the customer put in the cart themselves;
       // this lets the custom-combo builder show real subtotal/discount/total without a separate endpoint or
@@ -244,37 +240,11 @@ router.post('/send-status-email', requireAuth, async (req: Request, res: Respons
   }
 });
 
-// PUBLIC (rate limited): place a Cash-on-Delivery order. Amounts are computed by the server.
-router.post('/cod', orderLimiter, async (req: Request, res: Response) => {
-  try {
-    // The storefront sends the fields at the top level; older clients wrapped them in `order_data`.
-    const data = req.body?.order_data ?? req.body ?? {};
-    const customer = cleanCustomer(data);
-
-    const quote = await priceCart(pool, data.items, {
-      couponCode: data.coupon_code,
-      email: customer.email,
-      paymentMethod: 'cod',
-    });
-
-    const order = await createOrder({ quote, customer, paymentMethod: 'cod' });
-
-    Promise.allSettled([
-      sendOrderConfirmationEmail(order),
-      sendAdminNotification(order),
-    ]);
-
-    res.json({
-      success: true,
-      order: {
-        id: order.id,
-        custom_order_id: order.custom_order_id,
-        tracking_id: order.custom_order_id,
-      },
-    });
-  } catch (error: any) {
-    handlePricingError(res, error, 'Error creating COD order:');
-  }
+// Cash on delivery is no longer offered. The endpoint is kept only so that an old or hand-made request gets a clear
+// answer instead of an ambiguous 404; it never reads the body, prices a cart or creates an order. (createOrder
+// itself also refuses anything but a verified online payment, so there is no second way in.)
+router.all('/cod', (_req: Request, res: Response) => {
+  res.status(410).json({ success: false, error: 'Cash on delivery is no longer available. Please pay online at checkout.' });
 });
 
 export default router;

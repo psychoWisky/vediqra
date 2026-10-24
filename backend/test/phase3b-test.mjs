@@ -1,12 +1,15 @@
 // Phase 3B API tests. Requires: the app started with `npx tsx test/serve-with-mock.ts` (Razorpay fake),
-// the SMTP sink (`node test/smtp-sink.mjs`), a local `vediqra` database, and an admin user "testadmin".
-//   TEST_PW=... RAZORPAY_KEY_SECRET=... node test/phase3b-test.mjs
+// the SMTP sink (`node test/smtp-sink.mjs`), a DISPOSABLE database (TEST_DB, default "vediqra") and an admin user
+// "testadmin". Orders are placed through the online flow (create-order + verify-payment against the fake): cash on
+// delivery no longer exists.
+//   TEST_PW=... RAZORPAY_KEY_SECRET=... [TEST_DB=...] node test/phase3b-test.mjs
 // All fixtures are prefixed "ZZ3B" and removed by the runner afterwards; the seeded catalogue is never touched.
 import { execSync } from 'node:child_process';
 import crypto from 'node:crypto';
 
 const B = process.env.BASE || 'http://localhost:5000';
 const SECRET = process.env.RAZORPAY_KEY_SECRET;
+const TEST_DB = process.env.TEST_DB || 'vediqra';
 const results = [];
 const check = (name, ok, detail = '') => { results.push({ name, ok }); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail !== '' ? '  -> ' + String(detail).slice(0, 190) : ''}`); };
 let token;
@@ -21,7 +24,7 @@ async function call(method, path, body, tok = token) {
 }
 const pub = (m, p, b) => call(m, p, b, null);
 const A = (m, p, b) => call(m, '/api/admin' + p, b);
-const psql = (sql) => execSync(`psql -U postgres -h localhost -w -d vediqra -At -c "${sql.replace(/"/g, '\\"')}"`, { env: { ...process.env, PATH: process.env.PATH + ';C:\\Program Files\\PostgreSQL\\17\\bin' } }).toString().trim();
+const psql = (sql) => execSync(`psql -U postgres -h localhost -w -d ${TEST_DB} -At -c "${sql.replace(/"/g, '\\"')}"`, { env: { ...process.env, PATH: process.env.PATH + ';C:\\Program Files\\PostgreSQL\\17\\bin' } }).toString().trim();
 const sink = async (p, m = 'GET') => (await fetch(`http://127.0.0.1:2526${p}`, { method: m })).text();
 const sinkMessages = async () => JSON.parse(await sink('/messages'));
 const mockCalls = async () => (await fetch(B + '/__mock/calls')).json();
@@ -29,7 +32,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 token = (await pub('POST', '/api/admin/auth/login', { username: 'testadmin', password: process.env.TEST_PW })).json?.token;
 check('admin login', !!token);
-check('DB is exactly "vediqra"', psql('select current_database()') === 'vediqra');
+check(`DB is exactly "${TEST_DB}"`, psql('select current_database()') === TEST_DB);
 
 // ------------------------------------------------------------------------------------------ fixtures
 const mkProduct = async (name, price, extra = {}) =>
@@ -40,8 +43,19 @@ const mkGroup = async (pid, name, required, values) => {
   for (const [n, mod, stock] of values) out[n] = (await A('POST', `/product-option-groups/${g.id}/values`, { name: n, price_modifier: mod, stock_quantity: stock === undefined ? null : stock })).json;
   return { group: g, values: out };
 };
-const cod = (items, extra = {}) => pub('POST', '/api/orders/cod', { items, name: 'Buyer', email: `zz${Math.random().toString(36).slice(2, 8)}@example.com`, phone: '9876543210', address: 'a', city: 'c', state: 's', pincode: '700001', ...extra });
-const quote = (items, extra = {}) => pub('POST', '/api/orders/quote', { items, payment_method: 'cod', ...extra });
+// Places an order the only way the app allows: Razorpay create-order, then verify-payment with a valid signature
+// (the Razorpay fake is deterministic). Same response shape as the old COD endpoint: { status, json: { success, order } }.
+let payN = 0;
+const place = async (items, extra = {}) => {
+  const email = extra.email ?? `zz${Math.random().toString(36).slice(2, 8)}@example.com`;
+  const payId = `pay_ZZ3B_${Date.now()}_${++payN}`;
+  const co = await pub('POST', '/api/payment/create-order', { items, coupon_code: extra.coupon_code, email });
+  if (co.status !== 200) return co;
+  const sig = crypto.createHmac('sha256', SECRET).update(`${co.json.id}|${payId}`).digest('hex');
+  return pub('POST', '/api/payment/verify-payment', { razorpay_order_id: co.json.id, razorpay_payment_id: payId, razorpay_signature: sig,
+    order_data: { items, name: 'Buyer', phone: '9876543210', address: 'a', city: 'c', state: 's', pincode: '700001', ...extra, email } });
+};
+const quote = (items, extra = {}) => pub('POST', '/api/orders/quote', { items, payment_method: 'online', ...extra });
 const ln = (pid, extra = {}) => ({ id: `${pid}-x`, type: 'product', quantity: 1, ...extra });
 const stockOf = (sql) => psql(sql);
 const optStock = (id) => psql(`select coalesce(stock_quantity::text,'NULL') from product_option_values where id='${id}'`);
@@ -86,9 +100,9 @@ check('two custom combos add up their demand for the same option (2+3 > 4) -> 40
 r = await quote([cc([{ id: T.id, quantity: 11, selected_options: [{ value_id: tee.values.Plain.id }] }])]);
 check('custom combo counts product stock too (11 > 10) -> 409', r.status === 409, r.json?.error);
 
-// order snapshot + stock via a real (COD) custom-combo order
+// order snapshot + stock via a real (online) custom-combo order
 const holoBefore = optStock(tee.values.Holo.id), teeBefore = prodStock(T.id);
-r = await cod([cc([{ id: T.id, quantity: 3, selected_options: [{ value_id: tee.values.Holo.id }] }])]);
+r = await place([cc([{ id: T.id, quantity: 3, selected_options: [{ value_id: tee.values.Holo.id }] }])]);
 const comboOrder = r.json?.order?.id;
 check('custom combo order created', r.status === 200 && !!comboOrder, r.json?.error);
 let o = order(comboOrder);
@@ -117,7 +131,7 @@ const Rt = await mkProduct('ZZ3B Restock', 500, { track_stock: true, stock_quant
 const rg = await mkGroup(Rt.id, 'ZZ3B Rfinish', true, [['A', 10, 5], ['B', 0]]);
 const rline = (opt, q = 1) => ln(Rt.id, { quantity: q, selected_options: [opt.id] });
 
-r = await cod([rline(rg.values.A, 2)]);
+r = await place([rline(rg.values.A, 2)]);
 const o1 = r.json.order.id;
 check('setup: order of 2 takes product 10->8 and option A 5->3', prodStock(Rt.id) === '8' && optStock(rg.values.A.id) === '3');
 const snapBefore = JSON.stringify(order(o1).items);
@@ -132,24 +146,24 @@ r = await A('PUT', `/orders/${o1}`, { status: 'processing' });
 check('a cancelled order whose stock was returned cannot be re-opened (409)', r.status === 409, r.json?.error);
 
 // concurrent cancellations restore exactly once
-r = await cod([rline(rg.values.A, 3)]); const o2 = r.json.order.id;
+r = await place([rline(rg.values.A, 3)]); const o2 = r.json.order.id;
 const before2 = [prodStock(Rt.id), optStock(rg.values.A.id)];
 const cancels = await Promise.all(Array.from({ length: 6 }, (_, i) => (i % 2 ? call('PATCH', `/api/orders/${o2}/status`, { status: 'cancelled' }) : A('PUT', `/orders/${o2}`, { status: 'cancelled' }))));
 check('6 simultaneous cancellations: all answer 200, exactly one restores', cancels.every((x) => x.status === 200) && cancels.filter((x) => x.json.stock_restored).length === 1, cancels.map((x) => x.json.stock_restored).join());
 check('  ...stock back to the pre-order numbers (10 / 5) - not 3 x restored', prodStock(Rt.id) === '10' && optStock(rg.values.A.id) === '5' && before2[0] === '7', `${prodStock(Rt.id)} / ${optStock(rg.values.A.id)} (was ${before2})`);
 
 // untracked stock is never "restored"
-r = await cod([rline(rg.values.B, 2)]); const o3 = r.json.order.id;
+r = await place([rline(rg.values.B, 2)]); const o3 = r.json.order.id;
 check('untracked option (stock NULL): ledger has only the product movement', order(o3).stock_movements.length === 1 && order(o3).stock_movements[0].kind === 'product' && optStock(rg.values.B.id) === 'NULL');
 await A('PUT', `/orders/${o3}`, { status: 'cancelled' });
 check('  ...cancel: product back to 10, option B still NULL (never invented)', prodStock(Rt.id) === '10' && optStock(rg.values.B.id) === 'NULL');
-r = await cod([ln(N.id, { quantity: 5 })]);
+r = await place([ln(N.id, { quantity: 5 })]);
 check('product with track_stock=false: no movements recorded, stock number untouched', r.status === 200 && order(r.json.order.id).stock_movements.length === 0 && prodStock(N.id) === '0');
 await A('PUT', `/orders/${r.json.order.id}`, { status: 'cancelled' });
 check('  ...cancelling it leaves the stock number alone (0)', prodStock(N.id) === '0');
 
 // tracking switched off AFTER the order, option deleted AFTER the order
-r = await cod([rline(rg.values.A, 1)]); const o4 = r.json.order.id;
+r = await place([rline(rg.values.A, 1)]); const o4 = r.json.order.id;
 await A('PUT', `/products/${Rt.id}`, { track_stock: false });
 await A('DELETE', `/product-option-values/${rg.values.A.id}`);
 r = await A('PUT', `/orders/${o4}`, { status: 'cancelled' });
@@ -158,13 +172,13 @@ check('  ...product (untracked now) not incremented; nothing crashes', prodStock
 await A('PUT', `/products/${Rt.id}`, { track_stock: true, stock_quantity: 10 });
 
 // legacy order without a ledger
-r = await cod([ln(N.id)]); const o5 = r.json.order.id;
+r = await place([ln(N.id)]); const o5 = r.json.order.id;
 psql(`update orders set stock_movements='[]' where id='${o5}'`);
 r = await A('PUT', `/orders/${o5}`, { status: 'cancelled' });
 check('order with an empty ledger (placed before the ledger existed) cancels without restoring anything', r.status === 200 && r.json.stock_restored === false);
 
 // rules
-r = await cod([ln(N.id)]); const o6 = r.json.order.id;
+r = await place([ln(N.id)]); const o6 = r.json.order.id;
 await A('PUT', `/orders/${o6}`, { status: 'delivered' });
 r = await A('PUT', `/orders/${o6}`, { status: 'cancelled' });
 check('a delivered order cannot be cancelled (409)', r.status === 409, r.json?.error);
@@ -181,11 +195,11 @@ check('tracking number / notes still editable without a status change', r.status
 
 // failed order leaves nothing behind
 const stockNow = prodStock(T.id), holoNow = optStock(tee.values.Holo.id), ordersNow = psql('select count(*) from orders');
-r = await cod([ln(T.id, { quantity: 2, selected_options: [tee.values.Holo.id] })]);
+r = await place([ln(T.id, { quantity: 2, selected_options: [tee.values.Holo.id] })]);
 check('order refused for stock (Holo has 1): 409, no order, no stock change', r.status === 409 && prodStock(T.id) === stockNow && optStock(tee.values.Holo.id) === holoNow && psql('select count(*) from orders') === ordersNow, r.json?.error);
 
 // combo order: member stock restored
-r = await cod([fc([{ id: T.id, selected_options: [{ value_id: tee.values.Gold.id }] }, { id: M.id, selected_options: [{ value_id: mug.values.Std.id }] }], { quantity: 1 })]);
+r = await place([fc([{ id: T.id, selected_options: [{ value_id: tee.values.Gold.id }] }, { id: M.id, selected_options: [{ value_id: mug.values.Std.id }] }], { quantity: 1 })]);
 const oc = r.json.order.id; const goldBefore = optStock(tee.values.Gold.id), teeStock = prodStock(T.id);
 check('fixed combo order: Gold 1 -> 0, tee product -1', goldBefore === '0' && order(oc).stock_movements.length >= 2, `${goldBefore}`);
 await A('PUT', `/orders/${oc}`, { status: 'cancelled' });
@@ -265,17 +279,13 @@ for (const [suffix, label] of [['fail', 'provider outage (throws)'], ['rejected'
 }
 r = await refund('pay_does_not_exist', {});
 check('unknown payment id -> 404', r.status === 404);
-{ // COD orders have no payment to refund
-  r = await cod([rp(1)]);
-  check('COD order has no payment id, so it cannot be refunded through the provider', r.status === 200 && psql(`select razorpay_payment_id is null from orders where id='${r.json.order.id}'`) === 't');
-}
 check('DB refuses refunded_amount above the order total (CHECK)', (() => { try { psql(`update orders set refunded_amount = total_amount + 1 where id='${p1.orderId}'`); return false; } catch { return true; } })());
 
 // ========================================================================================================
 // 5. STATUS EMAIL (real nodemailer 10 -> local SMTP sink; no SMTP account needed)
 // ========================================================================================================
 await sink('/reset', 'POST'); await sink('/mode?fail=0', 'POST');
-const eo = (await cod([ln(N.id)], { email: 'status.customer@example.com' })).json.order;
+const eo = (await place([ln(N.id)], { email: 'status.customer@example.com' })).json.order;
 await sleep(700);
 const afterPlace = await sinkMessages();
 check('order confirmation email reached the SMTP sink (customer + admin notification)', afterPlace.some((m) => m.to.includes('status.customer@example.com')), afterPlace.map((m) => m.to.join('+')).join(' | '));
@@ -301,7 +311,7 @@ r = await call('POST', '/api/orders/send-status-email', { orderId: eo.id, newSta
 check('SMTP refuses the recipient: route reports success=false (no false success)', r.status === 200 && r.json.success === false, JSON.stringify(r.json));
 await sink('/mode?fail=0', 'POST'); await sink('/reset', 'POST');
 // PATCH status: mails only on a real change
-const eo2 = (await cod([ln(N.id)], { email: 'patch.customer@example.com' })).json.order;
+const eo2 = (await place([ln(N.id)], { email: 'patch.customer@example.com' })).json.order;
 await sleep(500); await sink('/reset', 'POST');
 await call('PATCH', `/api/orders/${eo2.id}/status`, { status: 'processing' });
 await call('PATCH', `/api/orders/${eo2.id}/status`, { status: 'processing' });
@@ -319,9 +329,9 @@ check('admin PUT with an unchanged status reports status_changed=false (the admi
 // ========================================================================================================
 // 6. Misc functional fixes
 // ========================================================================================================
-r = await cod([ln(N.id)], { email: 'a@b.com,c@d.com' });
+r = await place([ln(N.id)], { email: 'a@b.com,c@d.com' });
 check('customer email with a second recipient ("a@b.com,c@d.com") is rejected', r.status === 400, r.json?.error);
-r = await cod([ln(N.id)], { email: 'x@y.com>' });
+r = await place([ln(N.id)], { email: 'x@y.com>' });
 check('customer email with angle bracket rejected', r.status === 400);
 // review stats ride along with the product list (product cards no longer make a request each)
 await A('PUT', `/products/${N.id}`, { is_active: true });

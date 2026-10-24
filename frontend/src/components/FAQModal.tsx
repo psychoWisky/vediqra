@@ -10,8 +10,8 @@ interface FAQModalProps {
 // Only statements that are true of how the store works today. Shipping times, return terms and support hours
 // are business decisions and are NOT stated here until VEDIQRA confirms them.
 const FAQS: { q: string; a: string }[] = [
-  { q: 'How do I place an order?', a: 'Add products to your cart, open the cart and choose Checkout. Enter your delivery details, pick a payment method and place the order.' },
-  { q: 'Which payment methods are available?', a: 'You can pay online at checkout or choose cash on delivery. Any cash-on-delivery fee is shown in your order summary before you place the order.' },
+  { q: 'How do I place an order?', a: 'Add products to your cart, open the cart and choose Checkout. Enter your delivery details, pay online and your order is confirmed once the payment goes through.' },
+  { q: 'Which payment methods are available?', a: 'You pay online at checkout, by UPI or a debit or credit card, through a secure payment window. Cash on delivery is not available.' },
   { q: 'What do shipping and other charges cost?', a: 'Shipping and any fees are calculated for your cart and shown in the order summary at checkout, before you pay.' },
   { q: 'How do I personalise a product?', a: 'Products with the Personalisable label let you add your own text and images before adding to the cart.' },
   { q: 'What are combos and custom combos?', a: 'A combo is a set of products sold together at one price. With a custom combo you choose the products yourself, and the discount grows with the number of items.' },

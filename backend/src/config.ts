@@ -56,7 +56,6 @@ const config = {
   orderIdPrefix: process.env.ORDER_ID_PREFIX || 'VEDIQRA',
   freeShippingThreshold: num(process.env.FREE_SHIPPING_THRESHOLD, 499),
   shippingFee: num(process.env.SHIPPING_FEE, 79),
-  codFee: num(process.env.COD_FEE, 49),
 };
 
 /**

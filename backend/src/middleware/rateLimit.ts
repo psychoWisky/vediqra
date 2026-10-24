@@ -13,13 +13,15 @@ const make = (windowMinutes: number, max: number, message: string) =>
 export const loginLimiter = make(15, 10, 'Too many login attempts. Try again in 15 minutes.');
 
 /** Razorpay order creation / payment verification. */
-export const paymentLimiter = make(15, 30, 'Too many payment requests. Please try again shortly.');
+// RATE_LIMIT_PAYMENTS raises the ceiling for automated test runs (every test order is now 2 payment requests);
+// the default is the production value.
+export const paymentLimiter = make(15, Number(process.env.RATE_LIMIT_PAYMENTS) || 30, 'Too many payment requests. Please try again shortly.');
 
 /** Refunds (admin only, but keep a hard ceiling anyway). */
 // RATE_LIMIT_REFUNDS raises the ceiling for automated test runs; the default is the production value.
 export const refundLimiter = make(60, Number(process.env.RATE_LIMIT_REFUNDS) || 10, 'Too many refund requests.');
 
-/** Public order creation (COD) and price quotes. */
+/** Public price quotes. */
 // RATE_LIMIT_ORDERS raises the ceiling for automated test runs; the default is the production value.
 export const orderLimiter = make(15, Number(process.env.RATE_LIMIT_ORDERS) || 60, 'Too many order requests. Please try again shortly.');
 

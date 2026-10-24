@@ -20,7 +20,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
   const { items, removeItem, updateQuantity, total, clearCart } = useCart();
   const count = items.reduce((n, i) => n + i.quantity, 0);
   // Shipping / fees / total come from the server's own pricing of this cart (never computed here).
-  const { online, cod, loading: quoting, error: quoteError } = useServerQuote(items, { enabled: isOpen });
+  const { online, loading: quoting, error: quoteError } = useServerQuote(items, { enabled: isOpen });
   const baseName = (item: (typeof items)[number]) => (item.selected_options?.length ? item.name.replace(/\s*\([^)]*\)\s*$/, '') : item.name);
 
   return (
@@ -108,7 +108,6 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
               {online && <div className="flex justify-between border-t border-brand-line pt-2 text-base font-bold"><dt>Total</dt><dd>{formatCurrency(online.total_amount)}</dd></div>}
               {!online && <div className="flex justify-between border-t border-brand-line pt-2 text-base font-bold"><dt>Subtotal</dt><dd>{quoting ? 'Calculating…' : formatCurrency(total)}</dd></div>}
             </dl>
-            {cod && cod.cod_charge > 0 && <p className="text-xs text-brand-muted">Cash on delivery adds {formatCurrency(cod.cod_charge)} at checkout.</p>}
             {quoteError && !quoting && <p role="alert" className="rounded-lg bg-brand-accent-soft p-2 text-xs text-brand-accent-ink">{friendlyError(quoteError, 'We could not calculate shipping just now. It will be shown at checkout.')}</p>}
             <p className="text-xs text-brand-muted">Coupons and the final total are confirmed at checkout.</p>
             <div className="flex gap-3">

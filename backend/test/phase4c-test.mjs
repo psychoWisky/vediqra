@@ -1,10 +1,14 @@
 // Phase 4C API tests: order confirmation/tracking privacy, the max_customization_images:0 create bug, and the
-// quote endpoint's new configuration/items fields. Requires a local `vediqra` database and an admin user
-// "testadmin".   TEST_PW=... node test/phase4c-test.mjs
+// quote endpoint's configuration/items fields. Requires the app started with `npx tsx test/serve-with-mock.ts`
+// (Razorpay fake), a DISPOSABLE database (TEST_DB, default "vediqra") and an admin user "testadmin".
+//   TEST_PW=... RAZORPAY_KEY_SECRET=... [TEST_DB=...] node test/phase4c-test.mjs
 // All fixtures are prefixed "ZZ4C" and removed by the runner afterwards; the seeded catalogue is never touched.
 import { execSync } from 'node:child_process';
+import crypto from 'node:crypto';
 
 const B = process.env.BASE || 'http://localhost:5000';
+const SECRET = process.env.RAZORPAY_KEY_SECRET;
+const TEST_DB = process.env.TEST_DB || 'vediqra';
 const results = [];
 const check = (name, ok, detail = '') => { results.push({ name, ok }); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail !== '' ? '  -> ' + String(detail).slice(0, 190) : ''}`); };
 let token;
@@ -19,11 +23,11 @@ async function call(method, path, body, tok = token) {
 }
 const pub = (m, p, b) => call(m, p, b, null);
 const A = (m, p, b) => call(m, '/api/admin' + p, b);
-const psql = (sql) => execSync(`psql -U postgres -h localhost -w -d vediqra -At -c "${sql.replace(/"/g, '\\"')}"`, { env: { ...process.env, PATH: process.env.PATH + ';C:\\Program Files\\PostgreSQL\\17\\bin' } }).toString().trim();
+const psql = (sql) => execSync(`psql -U postgres -h localhost -w -d ${TEST_DB} -At -c "${sql.replace(/"/g, '\\"')}"`, { env: { ...process.env, PATH: process.env.PATH + ';C:\\Program Files\\PostgreSQL\\17\\bin' } }).toString().trim();
 
 token = (await pub('POST', '/api/admin/auth/login', { username: 'testadmin', password: process.env.TEST_PW })).json?.token;
 check('admin login', !!token);
-check('DB is exactly "vediqra"', psql('select current_database()') === 'vediqra');
+check(`DB is exactly "${TEST_DB}"`, psql('select current_database()') === TEST_DB);
 
 // =========================================================================================================
 // PART C: max_customization_images: 0 must stick (explicit 0 != "not supplied")
@@ -48,16 +52,21 @@ check('  ...and nothing was created for the rejected request', psql("select coun
 const cheap = await A('POST', '/products', { name: 'ZZ4C Cheap', price: 50, image_url: 'x', description: '', stock_quantity: 0, is_active: true });
 const line = (id, extra = {}) => ({ id: `${id}-x`, type: 'product', product_id: id, quantity: 1, ...extra });
 r = await pub('POST', '/api/orders/quote', { items: [line(cheap.json.product.id)], payment_method: 'online' });
-check('quote: shipping_threshold / shipping_fee / cod_fee are echoed as configuration (not secrets)', r.status === 200 && typeof r.json.shipping_threshold === 'number' && typeof r.json.shipping_fee === 'number' && typeof r.json.cod_fee === 'number', JSON.stringify(r.json));
+check('quote: shipping_threshold / shipping_fee are echoed as configuration (not secrets)', r.status === 200 && typeof r.json.shipping_threshold === 'number' && typeof r.json.shipping_fee === 'number', JSON.stringify(r.json));
 check('quote: shipping is actually charged below the threshold (cheap cart)', r.json.shipping_charge === r.json.shipping_fee && r.json.shipping_charge > 0);
 r = await pub('POST', '/api/orders/quote', { items: [line(cheap.json.product.id, { quantity: 1 })], payment_method: 'cod' });
-check('quote: cod_charge (this quote) equals cod_fee (the constant) when payment_method is cod', r.json.cod_charge === r.json.cod_fee && r.json.cod_charge > 0);
+check('quote: asking for payment_method cod is priced as online: no cod_charge / cod_fee in the response', r.status === 200 && !('cod_charge' in r.json) && !('cod_fee' in r.json), Object.keys(r.json || {}).join(','));
 
 // =========================================================================================================
 // PART A/B: order-confirmation / tracking never leak payment/refund/stock internals
 // =========================================================================================================
 const buyer = { name: 'ZZ4C Buyer', email: 'zz4c@example.com', phone: '9876500001', address: 'a', city: 'c', state: 's', pincode: '700001' };
-r = await pub('POST', '/api/orders/cod', { items: [line(cheap.json.product.id)], payment_method: 'cod', ...buyer });
+// the only way to place an order: Razorpay create-order, then verify-payment with a valid signature (the fake is deterministic)
+const items0 = [line(cheap.json.product.id)];
+const co = await pub('POST', '/api/payment/create-order', { items: items0, email: buyer.email });
+const payId = 'pay_ZZ4C_' + Date.now();
+const sig = crypto.createHmac('sha256', SECRET).update(`${co.json.id}|${payId}`).digest('hex');
+r = await pub('POST', '/api/payment/verify-payment', { razorpay_order_id: co.json.id, razorpay_payment_id: payId, razorpay_signature: sig, order_data: { items: items0, ...buyer } });
 check('order placed', r.status === 200, JSON.stringify(r.json));
 const orderId = r.json.order.id;
 const customOrderId = r.json.order.custom_order_id;

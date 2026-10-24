@@ -113,7 +113,10 @@ async function decrementStock(client: Db, stock: CartQuote['stock']): Promise<St
 /**
  * Insert an order (and its coupon usage) atomically.
  *
- * - Stock is taken in the same transaction (see decrementStock), for COD and for paid Razorpay orders alike.
+ * - Only a verified online payment can create an order: the caller must pass the Razorpay order id, payment id
+ *   and signature it has already verified. Cash on delivery no longer exists; this function refuses it, so even a
+ *   future caller cannot create an unpaid order that is stored as paid.
+ * - Stock is taken in the same transaction (see decrementStock).
  * - The order number comes from a PostgreSQL sequence, so concurrent checkouts can never share a number.
  * - When a coupon is used its row is locked, the limits are re-checked, and used_count is incremented
  *   in the same transaction as the order, so a usage limit cannot be overshot by simultaneous orders.
@@ -122,10 +125,12 @@ async function decrementStock(client: Db, stock: CartQuote['stock']): Promise<St
 export async function createOrder(params: {
   quote: CartQuote;
   customer: CleanCustomer;
-  paymentMethod: 'cod' | 'online';
-  payment?: RazorpayPayment;
+  paymentMethod: 'online';
+  payment: RazorpayPayment;
 }): Promise<any> {
   const { quote, customer, paymentMethod, payment } = params;
+  if ((paymentMethod as string) !== 'online') throw new PricingError('Only online payment is supported.', 400);
+  if (!payment?.payment_id || !payment?.order_id) throw new PricingError('A verified online payment is required to place an order.', 400);
   const client = await pool.connect();
 
   try {
@@ -166,13 +171,13 @@ export async function createOrder(params: {
        RETURNING *`,
       [
         customOrderId,
-        payment?.order_id ?? null,
-        payment?.payment_id ?? null,
-        payment?.signature ?? null,
+        payment.order_id,
+        payment.payment_id,
+        payment.signature ?? null,
         JSON.stringify(quote.items),
         quote.subtotal,
         quote.shipping_charge,
-        quote.cod_charge,
+        0, // cod_charge: no cash on delivery any more; the column stays so old orders keep their stored fee
         quote.coupon?.code ?? null,
         quote.coupon_discount,
         quote.total_amount,
@@ -185,8 +190,8 @@ export async function createOrder(params: {
         customer.state,
         customer.pincode,
         paymentMethod,
-        paymentMethod === 'online' ? 'paid' : 'pending',
-        paymentMethod === 'online' ? new Date().toISOString() : null,
+        'paid',
+        new Date().toISOString(),
         JSON.stringify(movements),
       ]
     );

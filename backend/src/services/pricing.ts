@@ -2,7 +2,7 @@
  * Authoritative pricing for carts and orders.
  *
  * The storefront sends WHAT the customer wants (product ids, chosen colour/size ids, quantities,
- * customization content, coupon code). Every price, discount, shipping and COD amount is derived
+ * customization content, coupon code). Every price, discount and shipping amount is derived
  * here from database rows. Nothing monetary from the request body is trusted.
  *
  * Pricing rules:
@@ -12,7 +12,7 @@
  *                   + the selected options' modifiers on its member products
  *   custom combo  = sum((price + customization_price + options) x qty) less a tier discount by total item count
  *   coupon        = applies to non-combo lines only
- *   shipping/COD  = server configuration (config.ts)
+ *   shipping      = server configuration (config.ts)
  *
  * Options: the request lists selected option VALUE ids. Each must belong to the product, be active, and no
  * group may be chosen twice; every required, active group must be chosen. Old carts that still carry
@@ -39,7 +39,9 @@ export interface Queryable {
   query: (text: string, values?: any[]) => Promise<{ rows: any[] }>;
 }
 
-export type PaymentMethod = 'cod' | 'online';
+// Online payment (Razorpay) is the only payment method. Cash on delivery was removed; old orders that were placed
+// with it keep payment_method = 'cod' in the database, but nothing here can create one.
+export type PaymentMethod = 'online';
 
 export interface AppliedCoupon {
   id: string;
@@ -62,13 +64,10 @@ export interface CartQuote {
   coupon: AppliedCoupon | null;
   coupon_discount: number;
   shipping_charge: number;
-  cod_charge: number;           // applied to THIS quote's total: config.codFee if paymentMethod is 'cod', else 0
   total_amount: number;
   // Configured checkout rules, echoed back so the frontend never keeps its own copy of business values.
-  // Unlike cod_charge these are constants, independent of which paymentMethod this quote was made for.
   shipping_threshold: number;
   shipping_fee: number;
-  cod_fee: number;
 }
 
 // Custom combo discount tiers by total item count. Keep in sync with frontend/src/pages/CustomCombo.tsx.
@@ -621,6 +620,9 @@ export async function priceCart(
   rawItems: unknown,
   opts: { couponCode?: string | null; email?: string; paymentMethod: PaymentMethod }
 ): Promise<CartQuote> {
+  // Defence in depth: the type already says 'online', but a caller that builds this from request data must not be
+  // able to smuggle another method in.
+  if ((opts.paymentMethod as string) !== 'online') throw new PricingError('Only online payment is supported.', 400);
   if (!Array.isArray(rawItems) || rawItems.length === 0) throw new PricingError('Your cart is empty');
   if (rawItems.length > MAX_CART_LINES) throw new PricingError('Too many items in cart');
 
@@ -681,13 +683,12 @@ export async function priceCart(
 
   const coupon_discount = coupon ? coupon.discount_amount : 0;
   const shipping_charge = subtotal >= config.freeShippingThreshold ? 0 : config.shippingFee;
-  const cod_charge = opts.paymentMethod === 'cod' ? config.codFee : 0;
-  const total_amount = Math.max(round2(subtotal + shipping_charge + cod_charge - coupon_discount), 0);
+  const total_amount = Math.max(round2(subtotal + shipping_charge - coupon_discount), 0);
 
   const stock = collectStock(items, catalog);
 
   return {
-    items, stock, subtotal, coupon, coupon_discount, shipping_charge, cod_charge, total_amount,
-    shipping_threshold: config.freeShippingThreshold, shipping_fee: config.shippingFee, cod_fee: config.codFee,
+    items, stock, subtotal, coupon, coupon_discount, shipping_charge, total_amount,
+    shipping_threshold: config.freeShippingThreshold, shipping_fee: config.shippingFee,
   };
 }

@@ -226,7 +226,7 @@ const Home: React.FC = () => {
       <section className="border-y border-brand-line bg-brand-subtle/60" aria-label="Service">
         <ul className="container-page grid gap-6 py-8 sm:grid-cols-3">
           {[
-            { icon: <ShieldCheck className="h-6 w-6" aria-hidden="true" />, title: 'Secure checkout', text: 'Pay online or choose cash on delivery.' },
+            { icon: <ShieldCheck className="h-6 w-6" aria-hidden="true" />, title: 'Secure checkout', text: 'Pay online by UPI or card.' },
             { icon: <PackageCheck className="h-6 w-6" aria-hidden="true" />, title: 'Track your order', text: 'Follow your order with your order number.' },
             { icon: <PenLine className="h-6 w-6" aria-hidden="true" />, title: 'Personalised on request', text: 'Add your own text and images.' },
           ].map((f) => (

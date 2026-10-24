@@ -57,7 +57,7 @@ function useCustomComboQuote(lines: Map<string, SelectedLine>) {
         combo_products: Array.from(lines.values()).map((l) => ({ id: l.product.id, quantity: l.quantity, selected_options: l.selected.map((o) => o.value_id) })),
       };
       try {
-        const res = await apiFetch<{ items: any[] }>('/api/orders/quote', { method: 'POST', body: JSON.stringify({ items: [preview], payment_method: 'cod' }) });
+        const res = await apiFetch<{ items: any[] }>('/api/orders/quote', { method: 'POST', body: JSON.stringify({ items: [preview], payment_method: 'online' }) });
         if (!cancelled) setState({ item: res.items?.[0] || null, loading: false, error: null });
       } catch (e: any) {
         if (!cancelled) setState({ item: null, loading: false, error: e?.message || 'unavailable' });

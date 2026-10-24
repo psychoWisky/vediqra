@@ -140,7 +140,7 @@ const ComboPage: React.FC = () => {
         id: `combo-${combo.id}-preview`, type: 'combo', combo_id: combo.id, quantity: 1,
         combo_products: comboProducts.map((item) => ({ id: item.product?.id, quantity: item.quantity, selected_options: selectionsFromChoices(item.product, choicesFor(item.product!.id)).map((o) => o.value_id) })),
       };
-      await apiFetch('/api/orders/quote', { method: 'POST', body: JSON.stringify({ items: toPricingItems(preview), payment_method: 'cod' }) });
+      await apiFetch('/api/orders/quote', { method: 'POST', body: JSON.stringify({ items: toPricingItems(preview), payment_method: 'online' }) });
     } catch (e) {
       setFormError(friendlyError(e, 'This combo could not be added right now. Please check your selections and try again.'));
       setChecking(false);

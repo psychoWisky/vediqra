@@ -12,11 +12,11 @@ async function main() {
   const before = { stock: await stockOf(), orders: await orders() };
   const quote: any = {
     stock: { products: [{ id: tiffin, name: 'Tiffin', qty: 1 }], values: [{ id: limited, label: 'Plain', qty: 100000 }] },
-    items: [], subtotal: 100, coupon: null, coupon_discount: 0, shipping_charge: 0, cod_charge: 0, total_amount: 100,
+    items: [], subtotal: 100, coupon: null, coupon_discount: 0, shipping_charge: 0, total_amount: 100,
   };
   const customer = cleanCustomer({ name: 'Rollback', email: 'rollback@example.com', phone: '9876543210', address: 'a', city: 'c', state: 's', pincode: '700001' } as any);
   let failed = false;
-  try { await createOrder({ quote, customer, paymentMethod: 'cod' }); } catch { failed = true; }
+  try { await createOrder({ quote, customer, paymentMethod: 'online', payment: { order_id: 'order_rb', payment_id: 'pay_rb', signature: 'sig' } }); } catch { failed = true; }
   const after = { stock: await stockOf(), orders: await orders() };
   console.log(failed && after.stock === before.stock && after.orders === before.orders
     ? 'ROLLED_BACK_OK' : `NOT_ROLLED_BACK ${JSON.stringify({ failed, before, after })}`);

@@ -199,7 +199,7 @@ const Popup: React.FC<PopupProps> = ({ onClose }) => {
               className="w-full bg-brand-accent text-[#111111] py-2.5 rounded-lg font-medium text-sm hover:bg-brand-accent-ink transition-colors flex items-center justify-center gap-1.5"
             >
               <Gift className="h-4 w-4" />
-              {popup.cta_text} • {popup.cash_on_delivery_text}
+              {popup.cta_text}
             </button>
 
             {/* Prepaid Discount */}

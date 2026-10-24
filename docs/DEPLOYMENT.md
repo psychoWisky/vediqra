@@ -178,7 +178,9 @@ protocol debug logging is automatically disabled when `NODE_ENV=production`.
 Set `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` to **live** keys for production. The server only
 constructs the Razorpay client lazily on first use (`getRazorpay()` in `src/services/razorpayClient.ts`)
 and returns a clean `503 Online payments are not configured` instead of crashing if the keys are
-missing — so the rest of the API (browsing, COD orders) works even without Razorpay configured. Test
+missing — so browsing and the rest of the API work even without Razorpay configured. Note that online
+payment is the ONLY way to place an order (cash on delivery was removed), so no order can be placed until the
+keys are set, and UPI/card availability depends on what is enabled on the Razorpay account. Test
 a real payment end-to-end with live keys before announcing launch; this was not (and could not safely
 be) tested in this phase without real credentials.
 
@@ -220,8 +222,8 @@ location /uploads/ {
 - `GET /health` — basic liveness (no auth).
 - `GET /api/test` — confirms the API is reachable.
 - After deploy, manually verify: homepage loads, an admin login succeeds, an admin image upload
-  round-trips (upload → appears via its returned URL), and (once SMTP/Razorpay are live) a test COD
-  order and a test paid order both complete and email correctly.
+  round-trips (upload → appears via its returned URL), and (once SMTP/Razorpay are live) a test paid
+  order completes and emails correctly. There is no cash-on-delivery path to test.
 
 ## 10. Rollback
 

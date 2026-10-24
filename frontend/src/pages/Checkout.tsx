@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { CheckCircle2, Lock, ShoppingBag, Tag, X } from 'lucide-react';
+import { CheckCircle2, CreditCard, Lock, ShoppingBag, Tag, X } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { CartItem } from '../types';
 import { CONFIG } from '../config';
@@ -18,7 +18,6 @@ declare global {
   interface Window { Razorpay: any }
 }
 
-type Method = 'online' | 'cod';
 type FormData = { name: string; email: string; phone: string; address: string; city: string; state: string; pincode: string; special_requests: string };
 
 const FIELD_ORDER: (keyof FormData)[] = ['name', 'email', 'phone', 'address', 'city', 'state', 'pincode'];
@@ -44,7 +43,6 @@ const Checkout: React.FC = () => {
   const { items, total, clearCart } = useCart();
   const navigate = useNavigate();
 
-  const [method, setMethod] = useState<Method>('online');
   const [form, setForm] = useState<FormData>({ name: '', email: '', phone: '', address: '', city: '', state: '', pincode: '', special_requests: '' });
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof FormData, string>>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -59,8 +57,8 @@ const Checkout: React.FC = () => {
   const [couponError, setCouponError] = useState('');
 
   const onlyCombos = items.length > 0 && items.every((i) => i.type === 'combo');
-  const { cod, online, loading: quoting, error: quoteError } = useServerQuote(items, { couponCode: coupon?.code, email: form.email });
-  const quote = method === 'cod' ? cod : online;
+  // Online payment is the only payment method, so the server's online quote is the quote.
+  const { online: quote, loading: quoting, error: quoteError } = useServerQuote(items, { couponCode: coupon?.code, email: form.email });
 
   // A coupon that stops being valid for the cart (limit reached, minimum no longer met ...) is dropped with the server's reason.
   useEffect(() => {
@@ -145,18 +143,6 @@ const Checkout: React.FC = () => {
     special_requests: form.special_requests || '',
   });
 
-  const placeCod = async () => {
-    setProgress('Placing your order…');
-    try {
-      const res = await apiFetch('/api/orders/cod', { method: 'POST', body: JSON.stringify({ ...payload(), payment_method: 'cod' }) });
-      const id = orderId(res);
-      clearCart();
-      navigate(id ? `/order-confirmation?orderId=${id}` : '/');
-    } catch (e) {
-      fail(friendlyError(e, 'We could not place your order. Please try again.'));
-    }
-  };
-
   const loadRazorpay = () => new Promise<boolean>((resolve) => {
     if (window.Razorpay) return resolve(true);
     const s = document.createElement('script');
@@ -169,7 +155,7 @@ const Checkout: React.FC = () => {
   const placeOnline = async () => {
     setProgress('Preparing secure payment…');
     try {
-      if (!(await loadRazorpay())) return fail('The online payment service could not be loaded. Please check your connection, or choose cash on delivery.');
+      if (!(await loadRazorpay())) return fail('The online payment service could not be loaded. Please check your connection and try again.');
       const p = payload();
       const created = await apiFetch('/api/payment/create-order', { method: 'POST', body: JSON.stringify({ items: p.items, coupon_code: p.coupon_code, email: form.email }) });
       const rzp = new window.Razorpay({
@@ -194,7 +180,7 @@ const Checkout: React.FC = () => {
         theme: { color: '#111111' },
         modal: { ondismiss: () => { setSubmitting(false); setProgress(''); } },
       });
-      rzp.on?.('payment.failed', () => fail('Your payment did not go through. Please try again, or choose cash on delivery.'));
+      rzp.on?.('payment.failed', () => fail('Your payment did not go through. Please try again.'));
       rzp.open();
     } catch (e) {
       fail(friendlyError(e, 'We could not start the payment. Please try again.'));
@@ -206,7 +192,7 @@ const Checkout: React.FC = () => {
     setOrderError('');
     if (!validate()) return;
     setSubmitting(true);
-    await (method === 'online' ? placeOnline() : placeCod());
+    await placeOnline();
   };
 
   /* ---------------------------------------------------------------- render */
@@ -247,7 +233,6 @@ const Checkout: React.FC = () => {
         {quote && quote.shipping_charge > 0 && quote.shipping_threshold > 0 && (
           <p className="text-xs text-brand-muted">Free shipping on orders above {formatCurrency(quote.shipping_threshold)}.</p>
         )}
-        {method === 'cod' && quote && quote.cod_charge > 0 && <div className="flex justify-between"><dt className="text-brand-muted">Cash on delivery fee</dt><dd>{formatCurrency(quote.cod_charge)}</dd></div>}
         {discount > 0 && <div className="flex justify-between text-brand-success"><dt>Discount{coupon?.code ? ` (${coupon.code})` : ''}</dt><dd>-{formatCurrency(discount)}</dd></div>}
         <div className="flex justify-between border-t border-brand-line pt-3 text-lg font-bold"><dt>Total</dt><dd data-testid="grand-total">{quote ? formatCurrency(quote.total_amount) : quoting ? 'Calculating…' : '—'}</dd></div>
       </dl>
@@ -321,19 +306,9 @@ const Checkout: React.FC = () => {
 
           <section className="card p-5" aria-labelledby="co-h4">
             <h2 id="co-h4" className="mb-3 text-lg font-bold">Payment</h2>
-            <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-labelledby="co-h4">
-              {([
-                { value: 'online' as Method, title: 'Pay online', text: 'Cards, UPI and netbanking' },
-                { value: 'cod' as Method, title: 'Cash on delivery', text: cod && cod.cod_charge > 0 ? `Pay on delivery. Fee: ${formatCurrency(cod.cod_charge)}` : 'Pay when your order arrives' },
-              ]).map((o) => (
-                <div key={o.value} className="relative">
-                  <input id={`pay-${o.value}`} type="radio" name="payment" value={o.value} checked={method === o.value} onChange={() => setMethod(o.value)} className="peer sr-only" />
-                  <label htmlFor={`pay-${o.value}`} className={`flex min-h-[64px] cursor-pointer items-start gap-3 rounded-xl border-2 p-4 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-accent-ink ${method === o.value ? 'border-brand-accent bg-brand-accent-soft' : 'border-brand-line hover:border-brand-accent/60'}`}>
-                    <span aria-hidden="true" className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${method === o.value ? 'border-brand-accent' : 'border-brand-line'}`}>{method === o.value && <span className="h-2.5 w-2.5 rounded-full bg-brand-accent" />}</span>
-                    <span><span className="block text-sm font-semibold">{o.title}</span><span className="block text-xs text-brand-muted">{o.text}</span></span>
-                  </label>
-                </div>
-              ))}
+            <div className="flex items-start gap-3 rounded-xl border-2 border-brand-accent bg-brand-accent-soft p-4" data-testid="payment-online-only">
+              <CreditCard className="mt-0.5 h-5 w-5 shrink-0 text-brand-accent-ink" aria-hidden="true" />
+              <p><span className="block text-sm font-semibold">Pay online</span><span className="block text-xs text-brand-muted">UPI and debit or credit cards, through a secure payment window.</span></p>
             </div>
 
             <div ref={errorRef} aria-live="assertive">
@@ -343,7 +318,7 @@ const Checkout: React.FC = () => {
             <button type="submit" disabled={submitting} className="btn-primary mt-5 w-full !min-h-[52px] text-base" data-testid="place-order">
               {submitting ? (<><span className="h-4 w-4 animate-spin rounded-full border-2 border-current/30 border-t-current" aria-hidden="true" /> {progress || 'Processing…'}</>) : (<><Lock className="h-4 w-4" aria-hidden="true" /> Place order{quote ? ` · ${formatCurrency(quote.total_amount)}` : ''}</>)}
             </button>
-            {method === 'online' && <p className="mt-2 text-center text-xs text-brand-muted">You will be taken to a secure payment window.</p>}
+            <p className="mt-2 text-center text-xs text-brand-muted">You will be taken to a secure payment window. Your order is confirmed only after the payment is verified.</p>
           </section>
         </form>
 

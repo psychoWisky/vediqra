@@ -6,13 +6,11 @@ import { CartItem } from '../types';
 export interface ServerQuote {
   subtotal: number;
   shipping_charge: number;
-  cod_charge: number;
   coupon_discount: number;
   total_amount: number;
   // Configured checkout rules, echoed by the server so the frontend never keeps its own copy of them.
   shipping_threshold: number;
   shipping_fee: number;
-  cod_fee: number;
 }
 
 // Send only what the server needs to price the cart: ids, quantities, chosen options and customization
@@ -46,7 +44,6 @@ export const toPricingItems = (cartItems: any[]) =>
   }));
 
 export interface QuoteState {
-  cod: ServerQuote | null;
   online: ServerQuote | null;
   loading: boolean;
   /** Customer-facing reason the server could not price the cart (sold out, invalid option, invalid coupon ...). */
@@ -54,23 +51,18 @@ export interface QuoteState {
 }
 
 /**
- * Server quote for the current cart, for both payment methods.
- *
- * Only ONE request is made (payment_method: 'online'): the subtotal, shipping and any coupon discount do not
- * depend on the payment method, only the COD fee does, and the server already echoes that fee as a constant
- * (`cod_fee`) on every quote. The COD quote is the online one with that constant fee added in — arithmetic on
- * two numbers the server gave us, not a second pricing model. The order is still priced authoritatively by the
- * server, for the payment method actually chosen, at checkout.
+ * Server quote for the current cart. Online payment is the only payment method, so there is one quote. The order
+ * is still priced authoritatively by the server when the payment is created and again when it is verified.
  */
 export function useServerQuote(items: CartItem[], opts: { couponCode?: string | null; email?: string; enabled?: boolean } = {}): QuoteState {
-  const [state, setState] = useState<QuoteState>({ cod: null, online: null, loading: items.length > 0, error: null });
+  const [state, setState] = useState<QuoteState>({ online: null, loading: items.length > 0, error: null });
   const key = JSON.stringify(toPricingItems(items));
   const coupon = opts.couponCode || null;
   const email = opts.email || undefined;
   const enabled = opts.enabled !== false;
 
   useEffect(() => {
-    if (!enabled || items.length === 0) { setState({ cod: null, online: null, loading: false, error: null }); return; }
+    if (!enabled || items.length === 0) { setState({ online: null, loading: false, error: null }); return; }
     let cancelled = false;
     setState((s) => ({ ...s, loading: true }));
     const timer = setTimeout(async () => {
@@ -79,10 +71,9 @@ export function useServerQuote(items: CartItem[], opts: { couponCode?: string | 
           method: 'POST',
           body: JSON.stringify({ items: toPricingItems(items), payment_method: 'online', coupon_code: coupon, email }),
         });
-        const cod: ServerQuote = { ...online, cod_charge: online.cod_fee, total_amount: online.total_amount + online.cod_fee };
-        if (!cancelled) setState({ cod, online, loading: false, error: null });
+        if (!cancelled) setState({ online, loading: false, error: null });
       } catch (e: any) {
-        if (!cancelled) setState({ cod: null, online: null, loading: false, error: e?.message || 'unavailable' });
+        if (!cancelled) setState({ online: null, loading: false, error: e?.message || 'unavailable' });
       }
     }, 350);
     return () => { cancelled = true; clearTimeout(timer); };
