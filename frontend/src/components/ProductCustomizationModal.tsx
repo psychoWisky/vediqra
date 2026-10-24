@@ -132,7 +132,9 @@ const ProductCustomizationModal: React.FC<ProductCustomizationModalProps> = ({
       const customization: CustomizationData = {
         text_lines: lines.length ? lines : undefined,
         image_urls: urls.length ? urls : undefined,
-        preview_urls: images.map((i) => i.preview),
+        // The cart is persisted in localStorage, so keep this to the small uploaded-file URLs. The in-modal
+        // data-URL previews can be megabytes each and nothing outside this modal reads them.
+        preview_urls: urls,
         image_paths: urls,
       };
       if (onCustomizeComplete) {

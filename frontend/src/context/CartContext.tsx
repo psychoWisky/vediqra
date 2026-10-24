@@ -13,14 +13,52 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [items, setItems] = useState<CartItem[]>(() => {
-    const saved = localStorage.getItem('cart');
-    return saved ? JSON.parse(saved) : [];
-  });
+const CART_KEY = 'cart';
 
+// Customization previews used to be saved as full-size base64 data URLs, which can exceed the browser's
+// localStorage quota (~5 MB) with a single photo. Nothing reads them back (the server keeps the uploaded
+// image URLs in customization.image_urls, which is what orders and the admin use), so drop any data: URL
+// from carts written by older versions and from anything added now.
+const slimCustomization = (c: any) => {
+  if (!c || !Array.isArray(c.preview_urls)) return c;
+  const kept = c.preview_urls.filter((u: unknown) => typeof u === 'string' && !u.startsWith('data:'));
+  return { ...c, preview_urls: kept.length ? kept : undefined };
+};
+
+const slimItem = (item: any) => ({
+  ...item,
+  ...(item.customization ? { customization: slimCustomization(item.customization) } : {}),
+  ...(Array.isArray(item.combo_products)
+    ? { combo_products: item.combo_products.map((cp: any) => (cp && cp.customization ? { ...cp, customization: slimCustomization(cp.customization) } : cp)) }
+    : {}),
+});
+
+/** Never throws: missing, unreadable, corrupt or wrongly-shaped storage just gives an empty cart. */
+const loadCart = (): CartItem[] => {
+  try {
+    const saved = localStorage.getItem(CART_KEY);
+    if (!saved) return [];
+    const parsed = JSON.parse(saved);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((i) => i && typeof i === 'object' && typeof i.id === 'string' && Number.isFinite(Number(i.quantity)) && Number.isFinite(Number(i.price)))
+      .map(slimItem);
+  } catch {
+    return [];
+  }
+};
+
+export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [items, setItems] = useState<CartItem[]>(loadCart);
+
+  // Persisting is best effort: if storage is full, blocked (private mode) or otherwise failing, the cart
+  // keeps working in memory for this visit instead of throwing out of the effect.
   useEffect(() => {
-    localStorage.setItem('cart', JSON.stringify(items));
+    try {
+      localStorage.setItem(CART_KEY, JSON.stringify(items));
+    } catch (e) {
+      console.warn('Cart could not be saved to this browser; it will be kept in memory only.', e);
+    }
   }, [items]);
 
   const addItem = (item: CartItem) => {
@@ -33,7 +71,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             : i
         );
       }
-      return [...prev, item];
+      return [...prev, slimItem(item) as CartItem];
     });
   };
 
