@@ -126,7 +126,7 @@ const HeaderSearch: React.FC<{ className?: string; onDone?: () => void }> = ({ c
           {q && (
             <button
               type="button"
-              aria-label="Clear search"
+              aria-label="Clear search text"
               onClick={() => { setQ(''); setTyped(false); setOpen(false); setItems([]); inputRef.current?.focus(); }}
               className="absolute right-9 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-brand-muted hover:text-brand-ink"
             >

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Filter, X, SlidersHorizontal, Search, Share2 } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
 import { Product, Gender, Category } from '../types';
@@ -11,9 +11,10 @@ import { BRAND } from '../config/brand'
 import { Modal } from '../components/ui/Modal';
 import { Button, ButtonLink } from '../components/ui/Button';
 import { EmptyState, ErrorState, Skeleton } from '../components/ui/States';
-import { priceFilterLabel } from '../utils/shopLinks';
+import { BUDGET_BANDS, budgetLink, priceFilterLabel } from '../utils/shopLinks';
 
 /* ─── Dynamic OG / Twitter meta helper ─── */
+// `title` is the plain page title; the brand name is appended here (once) for the document title.
 const setMetaTags = (title: string, description: string, imageUrl: string, url: string) => {
   const upsert = (selector: string, attrName: string, attrVal: string, contentVal: string) => {
     let el = document.querySelector(selector) as HTMLMetaElement | null;
@@ -37,7 +38,7 @@ const setMetaTags = (title: string, description: string, imageUrl: string, url: 
   upsert('meta[name="twitter:image"]', 'name', 'twitter:image', imageUrl);
 };
 
-const SORTS = ['popular', 'price-low', 'price-high', 'newest'] as const;
+const SORTS = ['newest', 'price-low', 'price-high'] as const;   // 'newest' is the default (no ?sort= in the URL)
 type SortKey = typeof SORTS[number];
 const PRICE_CEILING = 50000;
 
@@ -51,7 +52,7 @@ const numParam = (v: string | null): number | null => {
 const Products: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const searchQuery = searchParams.get('search') || '';
+  const searchQuery = (searchParams.get('search') || '').trim();      // blank / whitespace-only is the same as no search
   const initialProductId = searchParams.get('id');
 
   const [products, setProducts] = useState<Product[]>([]);
@@ -63,54 +64,48 @@ const Products: React.FC = () => {
 
   // ---- Filters live in the URL, so a reload, the back button, a shared link and the header menu all agree:
   //   ?category=<name> (repeatable)  ?min=<n>  ?max=<n>  ?gender=<name>  ?sort=newest|price-low|price-high  ?search=<text>
-  const categoryKey = searchParams.getAll('category').join('\u0001');
+  // Blank and repeated ?category= values are ignored (they would show an empty chip / match nothing). Names are otherwise used as given.
+  const categoryKey = Array.from(new Set(searchParams.getAll('category').map((c) => c.trim()).filter(Boolean))).join('\u0001');
   const selectedCategories = useMemo(() => (categoryKey ? categoryKey.split('\u0001') : []), [categoryKey]);
   const selectedGender = searchParams.get('gender') || 'all';
   const sortParam = searchParams.get('sort');
-  const sortBy: SortKey = (SORTS as readonly string[]).includes(sortParam || '') ? (sortParam as SortKey) : 'popular';
-  const minPrice = numParam(searchParams.get('min')) ?? 0;
-  const maxParam = numParam(searchParams.get('max'));
+  const sortBy: SortKey = (SORTS as readonly string[]).includes(sortParam || '') ? (sortParam as SortKey) : 'newest';
+  // min/max: only non-negative numbers count. If min is above max the pair contradicts itself, so neither is applied (no chip, no filter).
+  const rawMin = numParam(searchParams.get('min'));
+  const rawMax = numParam(searchParams.get('max'));
+  const rangeInvalid = rawMin !== null && rawMax !== null && rawMin > rawMax;
+  const minPrice = rangeInvalid ? 0 : rawMin ?? 0;
+  const maxParam = rangeInvalid ? null : rawMax;
   const priceBound = Math.max(...products.map((p) => Number(p.price) || 0), PRICE_CEILING);
-  const priceRange: [number, number] = [minPrice, maxParam ?? priceBound];
+  const priceRange: [number, number] = [minPrice, Math.min(maxParam ?? priceBound, priceBound)];
 
   /** Change the URL's filters. Discrete choices add a history entry (back works); slider drags replace it. */
   const updateParams = (mutate: (p: URLSearchParams) => void, replace = false) => {
     const next = new URLSearchParams(searchParams);
     mutate(next);
+    if (next.toString() === searchParams.toString()) return;   // nothing changed: no extra history entry
     setSearchParams(next, { replace });
   };
-  const setSortBy = (v: SortKey) => updateParams((p) => { if (v === 'popular') p.delete('sort'); else p.set('sort', v); });
+  // After a chip is removed its button disappears; move focus to the next remaining chip (or the sort box) instead of losing it.
+  const chipsRef = useRef<HTMLDivElement>(null);
+  const sortRef = useRef<HTMLSelectElement>(null);
+  const pendingFocus = useRef(false);
+  useEffect(() => {
+    if (!pendingFocus.current) return;
+    pendingFocus.current = false;
+    ((chipsRef.current?.querySelector('button') as HTMLElement | null) ?? sortRef.current)?.focus();
+  }, [searchParams]);
+  const removeChip = (fn: () => void) => { pendingFocus.current = true; fn(); };
+
+  const setSortBy = (v: SortKey) => updateParams((p) => { if (v === 'newest') p.delete('sort'); else p.set('sort', v); });
   const setSelectedGender = (v: string) => updateParams((p) => { if (v === 'all') p.delete('gender'); else p.set('gender', v); });
   const setPriceMax = (v: number) => updateParams((p) => { if (v >= priceBound) p.delete('max'); else p.set('max', String(v)); }, true);
   const clearPrice = () => updateParams((p) => { p.delete('min'); p.delete('max'); });
 
   useEffect(() => { fetchData(); }, []);
 
-  /* Update meta tags whenever category selection changes */
-  useEffect(() => {
-    if (selectedCategories.length === 1) {
-      const catName = selectedCategories[0];
-      const catObj = categories.find(c => c.name === catName);
-      const imageUrl = catObj?.image_url
-        ? getImageUrl(catObj.image_url)
-        : `${window.location.origin}/placeholder.svg`;
-      const desc = catObj?.description
-        || `Shop our ${catName} collection.`;
-      setMetaTags(
-        `${catName} — ${BRAND.name}`,
-        desc,
-        imageUrl,
-        window.location.href,
-      );
-    } else if (selectedCategories.length === 0 && !searchQuery) {
-      setMetaTags(
-        `Shop — ${BRAND.name}`,
-        BRAND.tagline,
-        `${window.location.origin}/placeholder.svg`,
-        window.location.href,
-      );
-    }
-  }, [categoryKey, categories]);
+  // Put the page title back when leaving the listing (declared first so it captures the title this page replaces).
+  useEffect(() => { const previous = document.title; return () => { document.title = previous; }; }, []);
 
   const fetchData = async () => {
     try {
@@ -171,17 +166,16 @@ const Products: React.FC = () => {
       );
     }
     if (selectedGender !== 'all') {
-      filtered = filtered.filter(product => product.gender === selectedGender);
+      filtered = filtered.filter(product => (product.gender || '').toLowerCase() === selectedGender.toLowerCase());
     }
     switch (sortBy) {
       case 'price-low': filtered.sort((a, b) => a.price - b.price); break;
       case 'price-high': filtered.sort((a, b) => b.price - a.price); break;
-      case 'newest':
+      default:   // newest first (explicit, so the label stays true whatever order the API happens to return)
         filtered.sort((a, b) =>
           new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime()
         );
         break;
-      default: break;
     }
     return filtered;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -198,6 +192,11 @@ const Products: React.FC = () => {
   // Clears the filters; a text search stays (it has its own box in the header).
   const clearFilters = () => {
     updateParams((p) => { p.delete('category'); p.delete('gender'); p.delete('min'); p.delete('max'); });
+  };
+
+  // Clears the filters AND the text search (used by the empty state, where the search may be what matches nothing).
+  const clearAll = () => {
+    updateParams((p) => { p.delete('category'); p.delete('gender'); p.delete('min'); p.delete('max'); p.delete('search'); });
   };
 
   const handleShareCategory = async () => {
@@ -228,14 +227,21 @@ const Products: React.FC = () => {
     ...categories.filter(c => c.parent_id === parent.id && hasProducts(c)),
   ]);
 
-  const FilterContent = () => (
+  // A plain render function, NOT a component: a component declared here would be a new type on every render, so React would
+  // rebuild the whole panel (losing slider drag and keyboard focus) each time the URL changes. `idp` keeps ids unique when the
+  // sidebar and the drawer are both mounted.
+  const atCeiling = priceRange[1] >= priceBound;
+  const priceValueText = minPrice === 0 && atCeiling ? 'Any price' : priceFilterLabel(minPrice, atCeiling ? null : priceRange[1]);
+  const renderFilters = (idp: string) => (
     <div className="space-y-5">
       <div>
-        <h4 className="font-semibold text-sm mb-2">Price Range</h4>
+        <label htmlFor={`${idp}-price`} className="mb-2 block text-sm font-semibold">Price range</label>
         <input
+          id={`${idp}-price`}
           type="range" min="0"
           max={priceBound}
           step="100" value={priceRange[1]}
+          aria-valuetext={priceValueText}
           onChange={(e) => setPriceMax(parseInt(e.target.value))}
           className="w-full accent-brand-accent"
         />
@@ -275,6 +281,7 @@ const Products: React.FC = () => {
         </div>
       )}
 
+      {genders.length > 0 && (
       <div>
         <h4 className="font-semibold text-sm mb-2">For</h4>
         <div className="flex flex-wrap gap-1.5">
@@ -298,6 +305,7 @@ const Products: React.FC = () => {
           ))}
         </div>
       </div>
+      )}
 
       <button
         onClick={clearFilters}
@@ -308,8 +316,27 @@ const Products: React.FC = () => {
 
   const activeCategory = selectedCategories.length === 1 ? categories.find((c) => c.name === selectedCategories[0]) : undefined;
   const activeParent = activeCategory?.parent_id ? categories.find((c) => c.id === activeCategory.parent_id) : undefined;
+  // Page title / meta follow the URL (search, selected categories), so Back/Forward and removed chips stay in step.
+  const categoryPart = selectedCategories.length > 0 && selectedCategories.length <= 2 ? selectedCategories.join(' & ') : '';
+  const listingTitle = searchQuery
+    ? (categoryPart ? `Search \u201c${searchQuery}\u201d in ${categoryPart}` : `Search results for \u201c${searchQuery}\u201d`)
+    : (categoryPart || 'Shop');
+  const listingDescription = searchQuery
+    ? `Search results for \u201c${searchQuery}\u201d at ${BRAND.name}.`
+    : (activeCategory?.description || (categoryPart ? `Shop our ${categoryPart} collection.` : BRAND.tagline));
+  const listingImage = activeCategory?.image_url ? getImageUrl(activeCategory.image_url) : `${window.location.origin}/placeholder.svg`;
+  useEffect(() => {
+    setMetaTags(listingTitle, listingDescription, listingImage, window.location.href);
+  }, [listingTitle, listingDescription, listingImage]);
+
   const priceActive = minPrice > 0 || (maxParam !== null && maxParam < priceBound);
   const filterCount = selectedCategories.length + (selectedGender !== 'all' ? 1 : 0) + (priceActive ? 1 : 0);
+  // The label from the genders API when it lists this value; otherwise the URL value as given (nothing is invented).
+  const genderLabel = genders.find((g) => g.name.toLowerCase() === selectedGender.toLowerCase())?.display_name || selectedGender;
+  // Recovery shortcuts come from the loaded catalogue only: budget bands that really contain products, and categories that have some.
+  const bandsWithProducts = BUDGET_BANDS.filter((b) => products.some((pr) => pr.price >= (b.min ?? 0) && (b.max === undefined || pr.price <= b.max)));
+  const browseCategories = topLevel.filter(hasProducts).slice(0, 8);
+  const hasOtherFilters = selectedCategories.length > 0 || selectedGender !== 'all' || priceActive;
   const hasActiveFilters = selectedCategories.length > 0 || selectedGender !== 'all' || priceActive || Boolean(searchQuery);
 
   return (
@@ -334,10 +361,13 @@ const Products: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold sm:text-3xl">{selectedCategories.length === 1 ? selectedCategories[0] : searchQuery ? 'Search results' : 'Shop'}</h1>
           {activeCategory?.description && <p className="mt-2 max-w-2xl text-brand-muted">{activeCategory.description}</p>}
-          <p className="mt-1 text-sm text-brand-muted" aria-live="polite">
+          <p className="mt-1 text-sm text-brand-muted">
             {loading ? '' : selectedCategories.length === 1 ? `${filteredProducts.length} ${filteredProducts.length === 1 ? 'product' : 'products'}` : searchQuery ? `${filteredProducts.length} ${filteredProducts.length === 1 ? 'result' : 'results'} for “${searchQuery}”` : 'Browse all products'}
           </p>
         </div>
+        <p className="sr-only" role="status" aria-atomic="true">
+          {loading || failed ? '' : `${filteredProducts.length} ${searchQuery ? (filteredProducts.length === 1 ? 'result' : 'results') : (filteredProducts.length === 1 ? 'product' : 'products')}${searchQuery ? ` for \u201c${searchQuery}\u201d` : ''}`}
+        </p>
         <div className="flex items-center gap-2">
           <button type="button" onClick={handleShareCategory} aria-label="Share this collection" className="btn-ghost btn-sm !px-2">
             <Share2 className="h-4 w-4" aria-hidden="true" />
@@ -349,26 +379,29 @@ const Products: React.FC = () => {
       </div>
 
       {hasActiveFilters && (
-        <div className="mb-4 flex flex-wrap gap-2" aria-label="Active filters">
+        <div ref={chipsRef} role="group" aria-label="Active filters" className="mb-4 flex flex-wrap gap-2">
           {searchQuery && (
-            <span className="badge-neutral !py-1.5"><Search className="h-3 w-3" aria-hidden="true" />&ldquo;{searchQuery}&rdquo;</span>
+            <span className="badge-neutral !py-1.5">
+              <Search className="h-3 w-3" aria-hidden="true" />&ldquo;{searchQuery}&rdquo;
+              <button type="button" onClick={() => removeChip(() => updateParams((p) => { p.delete('search'); }))} aria-label={`Remove search “${searchQuery}”`} className="rounded-full p-0.5 hover:bg-brand-ink/10"><X className="h-3 w-3" aria-hidden="true" /></button>
+            </span>
           )}
           {selectedCategories.map((cat) => (
             <span key={cat} className="badge-accent !py-1.5 capitalize">
               {cat}
-              <button type="button" onClick={() => toggleCategory(cat)} aria-label={`Remove filter ${cat}`} className="rounded-full p-0.5 hover:bg-brand-accent/20"><X className="h-3 w-3" aria-hidden="true" /></button>
+              <button type="button" onClick={() => removeChip(() => toggleCategory(cat))} aria-label={`Remove filter ${cat}`} className="rounded-full p-0.5 hover:bg-brand-accent/20"><X className="h-3 w-3" aria-hidden="true" /></button>
             </span>
           ))}
           {priceActive && (
             <span className="badge-accent !py-1.5">
-              {priceFilterLabel(minPrice, maxParam)}
-              <button type="button" onClick={clearPrice} aria-label="Remove price filter" className="rounded-full p-0.5 hover:bg-brand-accent/20"><X className="h-3 w-3" aria-hidden="true" /></button>
+              {priceFilterLabel(minPrice, maxParam !== null && maxParam < priceBound ? maxParam : null)}
+              <button type="button" onClick={() => removeChip(clearPrice)} aria-label="Remove price filter" className="rounded-full p-0.5 hover:bg-brand-accent/20"><X className="h-3 w-3" aria-hidden="true" /></button>
             </span>
           )}
           {selectedGender !== 'all' && (
             <span className="badge-accent !py-1.5 capitalize">
-              {selectedGender}
-              <button type="button" onClick={() => setSelectedGender('all')} aria-label={`Remove filter ${selectedGender}`} className="rounded-full p-0.5 hover:bg-brand-accent/20"><X className="h-3 w-3" aria-hidden="true" /></button>
+              {genderLabel}
+              <button type="button" onClick={() => removeChip(() => setSelectedGender('all'))} aria-label={`Remove filter ${genderLabel}`} className="rounded-full p-0.5 hover:bg-brand-accent/20"><X className="h-3 w-3" aria-hidden="true" /></button>
             </span>
           )}
         </div>
@@ -379,12 +412,12 @@ const Products: React.FC = () => {
         <aside className="hidden w-56 shrink-0 md:block lg:w-64" aria-label="Filters">
           <div className="card sticky top-20 p-4">
             <h2 className="mb-4 flex items-center gap-2 text-base font-bold"><SlidersHorizontal className="h-4 w-4" aria-hidden="true" />Filters</h2>
-            <FilterContent />
+            {renderFilters('side')}
           </div>
         </aside>
         <Modal isOpen={showFilters} onClose={() => setShowFilters(false)} title="Filters" placement="left">
           <div className="p-5 pb-0">
-            <FilterContent />
+            {renderFilters('drawer')}
             <div className="sticky bottom-0 -mx-5 mt-6 flex gap-3 border-t border-brand-line bg-brand-elevated p-4">
               <button type="button" onClick={clearFilters} className="btn-secondary flex-1">Reset</button>
               <button type="button" onClick={() => setShowFilters(false)} className="btn-primary flex-1">Show {filteredProducts.length} {filteredProducts.length === 1 ? 'product' : 'products'}</button>
@@ -394,14 +427,13 @@ const Products: React.FC = () => {
 
         <div className="min-w-0 flex-1">
           <div className="mb-4 flex items-center justify-between gap-4">
-            <p className="text-sm text-brand-muted" aria-live="polite">
+            <p className="text-sm text-brand-muted">
               {loading ? 'Loading products…' : `Showing ${filteredProducts.length} of ${products.length} products`}
             </p>
             <div className="flex items-center gap-2">
               <label htmlFor="sort" className="sr-only">Sort by</label>
-              <select id="sort" value={sortBy} onChange={(e) => setSortBy(e.target.value as any)} className="input !w-auto !py-2">
-                <option value="popular">Default order</option>
-                <option value="newest">Newest</option>
+              <select id="sort" ref={sortRef} value={sortBy} onChange={(e) => setSortBy(e.target.value as any)} className="input !w-auto !py-2">
+                <option value="newest">Newest first</option>
                 <option value="price-low">Price: Low to High</option>
                 <option value="price-high">Price: High to Low</option>
               </select>
@@ -423,7 +455,24 @@ const Products: React.FC = () => {
           ) : products.length === 0 ? (
             <EmptyState title="Products are being added" description="There is nothing to show yet. Please check back soon." action={<ButtonLink to="/custom-combo" variant="secondary">Build a custom combo</ButtonLink>} />
           ) : (
-            <EmptyState title={searchQuery && selectedCategories.length === 0 ? 'No results found' : 'No products found'} description={searchQuery && selectedCategories.length === 0 ? `Nothing matches “${searchQuery}”. Try a different word, or browse the categories.` : selectedCategories.length > 0 && selectedGender === 'all' ? 'There are no products in this category yet.' : 'No products match your selected filters.'} action={<div className="flex flex-wrap justify-center gap-3"><Button onClick={clearFilters}>Clear filters</Button><ButtonLink to="/products" variant="secondary">See all products</ButtonLink></div>} />
+            <EmptyState title={searchQuery && selectedCategories.length === 0 ? 'No results found' : 'No products found'} description={searchQuery && selectedCategories.length === 0 ? `Nothing matches “${searchQuery}”. Try a different word, or browse the categories.` : selectedCategories.length > 0 && selectedGender === 'all' ? 'There are no products in this category yet.' : 'No products match your selected filters.'} action={<><div className="flex flex-wrap justify-center gap-3"><Button onClick={searchQuery ? clearAll : clearFilters}>{searchQuery ? (hasOtherFilters ? 'Clear search and filters' : 'Clear search') : 'Clear filters'}</Button><ButtonLink to="/products" variant="secondary">See all products</ButtonLink></div>
+              {(bandsWithProducts.length > 0 || browseCategories.length > 0) && (
+                <div className="mt-6 space-y-4 border-t border-brand-line pt-5 text-left">
+                  {bandsWithProducts.length > 0 && (
+                    <nav aria-label="Browse by budget">
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-brand-muted">Browse by budget</p>
+                      <ul className="flex flex-wrap gap-2">{bandsWithProducts.map((b) => <li key={b.key}><Link to={budgetLink(b)} className="btn-secondary btn-sm">{b.label}</Link></li>)}</ul>
+                    </nav>
+                  )}
+                  {browseCategories.length > 0 && (
+                    <nav aria-label="Browse by category">
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-brand-muted">Browse by category</p>
+                      <ul className="flex flex-wrap gap-2">{browseCategories.map((c) => <li key={c.id}><Link to={`/products?category=${encodeURIComponent(c.name)}`} className="btn-secondary btn-sm">{c.name}</Link></li>)}</ul>
+                    </nav>
+                  )}
+                </div>
+              )}
+            </>} />
           )}
         </div>
       </div>
