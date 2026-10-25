@@ -473,7 +473,7 @@ const Checkout: React.FC = () => {
           <p className="text-xs text-brand-muted">Free shipping on orders above {formatCurrency(quote.shipping_threshold)}.</p>
         )}
         {discount > 0 && <div className="flex justify-between text-brand-success"><dt>Discount{coupon?.code ? ` (${coupon.code})` : ''}</dt><dd>-{formatCurrency(discount)}</dd></div>}
-        <div className="flex justify-between border-t border-brand-line pt-3 text-lg font-bold"><dt>Total</dt><dd data-testid="grand-total">{quote ? formatCurrency(quote.total_amount) : quoting ? 'Calculating…' : '—'}</dd></div>
+        <div className="flex items-baseline justify-between border-t border-brand-line pt-4 font-display text-xl font-semibold"><dt>Total</dt><dd data-testid="grand-total">{quote ? formatCurrency(quote.total_amount) : quoting ? 'Calculating…' : '—'}</dd></div>
       </dl>
       {quoteError && !quoting && (
         <div role="alert" data-testid="quote-error" className="mt-3 rounded-lg border border-brand-danger/40 bg-brand-danger/10 p-3 text-sm font-medium text-brand-danger">
@@ -488,10 +488,10 @@ const Checkout: React.FC = () => {
   );
 
   return (
-    <div className="container-page py-8 md:py-12">
+    <div className="container-page py-10 md:py-16">
       <div className="mb-6">
         <Link to="/products" className="text-sm text-brand-muted hover:text-brand-ink">← Continue shopping</Link>
-        <h1 className="mt-2 text-2xl font-bold sm:text-3xl">Checkout</h1>
+        <h1 className="mt-4 text-4xl font-semibold sm:text-5xl">Checkout</h1>
       </div>
 
       {/* phones / tablets: the summary is available first, collapsed to the total */}
@@ -505,8 +505,8 @@ const Checkout: React.FC = () => {
 
       <div className="grid gap-8 lg:grid-cols-12">
         <form onSubmit={(e) => { e.preventDefault(); placeOrder(); }} noValidate className="space-y-8 lg:col-span-7">
-          <section className="card space-y-4 p-5" aria-labelledby="co-h1">
-            <h2 id="co-h1" className="text-lg font-bold">Contact</h2>
+          <section className="card space-y-5 p-6 md:p-8" aria-labelledby="co-h1">
+            <h2 id="co-h1" className="font-display text-xl font-semibold">Contact</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <Field id="co-name" label="Full name" error={fieldErrors.name}>{(p) => <input {...p} className={inputCls('name')} value={form.name} onChange={(e) => setField('name', e.target.value)} autoComplete="name" />}</Field>
@@ -516,8 +516,8 @@ const Checkout: React.FC = () => {
             </div>
           </section>
 
-          <section className="card space-y-4 p-5" aria-labelledby="co-h2">
-            <h2 id="co-h2" className="text-lg font-bold">Delivery address</h2>
+          <section className="card space-y-5 p-6 md:p-8" aria-labelledby="co-h2">
+            <h2 id="co-h2" className="font-display text-xl font-semibold">Delivery address</h2>
             <Field id="co-address" label="Address" error={fieldErrors.address}>{(p) => <textarea {...p} rows={2} className={inputCls('address')} value={form.address} onChange={(e) => setField('address', e.target.value)} autoComplete="street-address" placeholder="House no, street, area" />}</Field>
             <div className="grid gap-4 sm:grid-cols-3">
               <Field id="co-city" label="City" error={fieldErrors.city}>{(p) => <input {...p} className={inputCls('city')} value={form.city} onChange={(e) => setField('city', e.target.value)} autoComplete="address-level2" />}</Field>
@@ -527,8 +527,8 @@ const Checkout: React.FC = () => {
             <Field id="co-notes" label="Delivery notes" required={false}>{(p) => <textarea {...p} rows={2} className="input" value={form.special_requests} onChange={(e) => setField('special_requests', e.target.value)} placeholder="Anything we should know about your order or delivery" />}</Field>
           </section>
 
-          <section className="card p-5" aria-labelledby="co-h3">
-            <h2 id="co-h3" className="mb-3 flex items-center gap-2 text-lg font-bold"><Tag className="h-4 w-4" aria-hidden="true" /> Coupon</h2>
+          <section className="card p-6 md:p-8" aria-labelledby="co-h3">
+            <h2 id="co-h3" className="mb-3 flex items-center gap-2 font-display text-xl font-semibold"><Tag className="h-4 w-4" aria-hidden="true" /> Coupon</h2>
             {coupon ? (
               <div className="flex items-center justify-between gap-3 rounded-lg border border-brand-success/40 bg-brand-success/10 p-3" role="status">
                 <p className="flex items-center gap-2 text-sm"><CheckCircle2 className="h-5 w-5 text-brand-success" aria-hidden="true" /><span><strong>{coupon.code}</strong> applied{discount > 0 ? ` – you save ${formatCurrency(discount)}` : ''}</span></p>
@@ -549,9 +549,9 @@ const Checkout: React.FC = () => {
             )}
           </section>
 
-          <section className="card p-5" aria-labelledby="co-h4">
-            <h2 id="co-h4" className="mb-3 text-lg font-bold">Payment</h2>
-            <div className="flex items-start gap-3 rounded-xl border-2 border-brand-accent bg-brand-accent-soft p-4" data-testid="payment-online-only">
+          <section className="card p-6 md:p-8" aria-labelledby="co-h4">
+            <h2 id="co-h4" className="mb-3 font-display text-xl font-semibold">Payment</h2>
+            <div className="flex items-start gap-3 rounded-sm border border-brand-accent bg-brand-accent/10 p-4" data-testid="payment-online-only">
               <CreditCard className="mt-0.5 h-5 w-5 shrink-0 text-brand-accent-ink" aria-hidden="true" />
               <p><span className="block text-sm font-semibold">Pay online</span><span className="block text-xs text-brand-muted">UPI and debit or credit cards, through a secure payment window.</span></p>
             </div>
@@ -584,7 +584,7 @@ const Checkout: React.FC = () => {
 
         <aside className="hidden lg:col-span-5 lg:block" aria-label="Order summary">
           <div className="card sticky top-24 p-5">
-            <h2 className="mb-4 text-lg font-bold">Order summary</h2>
+            <h2 className="mb-5 font-display text-xl font-semibold">Order summary</h2>
             {summary}
           </div>
         </aside>

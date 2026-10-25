@@ -39,14 +39,14 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
         </div>
       ) : (
         <div className="flex h-full flex-col">
-          <ul className="flex-1 space-y-4 p-5">
+          <ul className="flex-1 space-y-5 p-5">
             {items.map((item, idx) => (
-              <li key={item.id} className="rounded-xl border border-brand-line p-3">
+              <li key={item.id} className="border-b border-brand-line pb-5 last:border-b-0">
                 <div className="flex gap-3">
-                  <img src={getImageUrl(item.image_url)} alt={item.name} className="h-16 w-16 shrink-0 rounded-lg bg-brand-subtle object-cover" />
+                  <img src={getImageUrl(item.image_url)} alt={item.name} className="h-20 w-16 shrink-0 rounded-sm bg-brand-subtle object-cover" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
-                      <p className="line-clamp-2 text-sm font-semibold">{baseName(item)}</p>
+                      <p className="line-clamp-2 text-[15px] font-medium">{baseName(item)}</p>
                       <button type="button" onClick={() => removeItem(item.id)} aria-label={`Remove ${item.name}`} className="-mr-1 -mt-1 rounded-lg p-1.5 text-brand-muted hover:bg-brand-subtle hover:text-brand-danger">
                         <X className="h-4 w-4" aria-hidden="true" />
                       </button>
@@ -103,7 +103,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
             ))}
           </ul>
 
-          <div className="sticky bottom-0 space-y-3 border-t border-brand-line bg-brand-elevated p-5">
+          <div className="sticky bottom-0 space-y-3 border-t border-brand-accent/30 bg-brand-elevated p-5">
             <dl className="space-y-1.5 text-sm" aria-live="polite" aria-busy={quoting}>
               <div className="flex justify-between"><dt className="text-brand-muted">Subtotal</dt><dd>{formatCurrency(online?.subtotal ?? total)}</dd></div>
               {online && <div className="flex justify-between"><dt className="text-brand-muted">Shipping</dt><dd>{online.shipping_charge > 0 ? formatCurrency(online.shipping_charge) : 'Free'}</dd></div>}
@@ -111,7 +111,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
               {online && <div className="flex justify-between border-t border-brand-line pt-2 text-base font-bold"><dt>Total</dt><dd>{formatCurrency(online.total_amount)}</dd></div>}
               {!online && <div className="flex justify-between border-t border-brand-line pt-2 text-base font-bold"><dt>Subtotal</dt><dd>{quoting ? 'Calculating…' : formatCurrency(total)}</dd></div>}
             </dl>
-            {pricesChanged && <p role="status" className="rounded-lg bg-brand-accent-soft p-2 text-xs text-brand-accent-ink">Some prices have changed since you added these items. The prices shown are the current ones.</p>}
+            {pricesChanged && <p role="status" className="rounded-sm border border-brand-accent/30 bg-brand-accent-soft p-2.5 text-xs text-brand-accent-ink">Some prices have changed since you added these items. The prices shown are the current ones.</p>}
             {quoteError && !quoting && <p role="alert" className="rounded-lg bg-brand-accent-soft p-2 text-xs text-brand-accent-ink">{friendlyError(quoteError, 'We could not calculate shipping just now. It will be shown at checkout.')}</p>}
             <p className="text-xs text-brand-muted">Coupons and the final total are confirmed at checkout.</p>
             <div className="flex gap-3">

@@ -246,8 +246,8 @@ const ProductPage: React.FC = () => {
 
   return (
     <div className="pb-24 lg:pb-0">
-      <div className="container-page py-6 lg:py-8">
-        <nav aria-label="Breadcrumb" className="mb-5 text-sm text-brand-muted">
+      <div className="container-page py-8 lg:py-12">
+        <nav aria-label="Breadcrumb" className="mb-8 text-[12px] uppercase tracking-[0.14em] text-brand-muted">
           <ol className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <li><Link to="/" className="hover:text-brand-ink">Home</Link></li>
             <li aria-hidden="true">/</li>
@@ -258,7 +258,7 @@ const ProductPage: React.FC = () => {
           </ol>
         </nav>
 
-        <div className="grid gap-8 lg:grid-cols-2 lg:gap-12">
+        <div className="grid gap-10 lg:grid-cols-[1.1fr_1fr] lg:gap-16">
           <div className="lg:sticky lg:top-24 lg:self-start">
             <ProductGallery
               images={images}
@@ -272,7 +272,7 @@ const ProductPage: React.FC = () => {
             <div className="flex items-start justify-between gap-3">
               <div>
                 {product.is_customizable && <div className="mb-2"><Badge tone="accent">Personalisable</Badge></div>}
-                <h1 className="text-2xl font-bold leading-tight sm:text-3xl">{product.name}</h1>
+                <h1 className="text-3xl font-semibold leading-[1.1] sm:text-4xl lg:text-[2.6rem]">{product.name}</h1>
               </div>
               <button type="button" onClick={handleShare} aria-label="Share this product" className="btn-ghost btn-sm !px-2"><Share2 className="h-5 w-5" aria-hidden="true" /></button>
             </div>
@@ -285,7 +285,7 @@ const ProductPage: React.FC = () => {
 
             {Number(product.price) > 0 && (
               <p className="mt-4 flex flex-wrap items-baseline gap-3" aria-live="polite">
-                <span className="text-3xl font-extrabold" data-testid="unit-price">{formatCurrency(unit)}</span>
+                <span className="font-display text-3xl font-semibold" data-testid="unit-price">{formatCurrency(unit)}</span>
                 {saving > 0 && <><span className="text-lg text-brand-muted line-through">{formatCurrency(original)}</span><Badge tone="danger">Save {formatCurrency(saving)}</Badge></>}
               </p>
             )}
@@ -318,8 +318,8 @@ const ProductPage: React.FC = () => {
 
             {/* ---- personalisation ---- */}
             {product.is_customizable && (
-              <section aria-labelledby="pz-title" className="mt-6 rounded-xl border border-brand-accent/50 bg-brand-accent-soft p-4">
-                <div className="flex items-center gap-2"><PenLine className="h-4 w-4 text-brand-accent-ink" aria-hidden="true" /><h2 id="pz-title" className="text-sm font-bold">Personalisation required</h2></div>
+              <section aria-labelledby="pz-title" className="mt-8 border-l-2 border-brand-accent bg-brand-subtle p-5">
+                <div className="flex items-center gap-2"><PenLine className="h-4 w-4 text-brand-accent-ink" strokeWidth={1.5} aria-hidden="true" /><h2 id="pz-title" className="text-[12px] font-semibold uppercase tracking-[0.18em]">Personalisation required</h2></div>
                 <p className="mt-1 text-sm text-brand-muted">
                   You will add
                   {Number(product.max_customization_lines) > 0 && ` up to ${product.max_customization_lines} ${Number(product.max_customization_lines) === 1 ? 'line' : 'lines'} of text${Number(product.max_customization_characters) > 0 ? ` (up to ${product.max_customization_characters} characters each)` : ''}`}
@@ -333,7 +333,7 @@ const ProductPage: React.FC = () => {
 
             {/* ---- price breakdown ---- */}
             {Number(product.price) > 0 && (optionLines.length > 0 || feePaise > 0) && (
-              <dl className="mt-6 space-y-1.5 rounded-xl border border-brand-line p-4 text-sm" data-testid="price-breakdown" aria-label="Price breakdown">
+              <dl className="mt-8 space-y-2 border-y border-brand-line py-5 text-sm" data-testid="price-breakdown" aria-label="Price breakdown">
                 <div className="flex justify-between"><dt className="text-brand-muted">Base price</dt><dd>{formatCurrency(fromPaise(basePaise))}</dd></div>
                 {optionLines.map((o) => (<div key={o.value_id} className="flex justify-between"><dt className="text-brand-muted">{o.group_name}: {o.name}</dt><dd>{formatModifier(o.price_modifier)}</dd></div>))}
                 {feePaise > 0 && <div className="flex justify-between"><dt className="text-brand-muted">Personalisation</dt><dd>{formatModifier(fromPaise(feePaise))}</dd></div>}
@@ -362,7 +362,7 @@ const ProductPage: React.FC = () => {
 
               {formError && <p role="alert" className="mt-4 rounded-lg border border-brand-danger/40 bg-brand-danger/10 p-3 text-sm font-medium text-brand-danger" data-testid="form-error">{formError}</p>}
 
-              <button type="button" onClick={handleAdd} disabled={outOfStock || adding} aria-disabled={outOfStock || adding} className="btn-primary mt-4 w-full !min-h-[52px] text-base">
+              <button type="button" onClick={handleAdd} disabled={outOfStock || adding} aria-disabled={outOfStock || adding} className="btn-primary mt-5 w-full !min-h-[56px]">
                 <ShoppingBag className="h-5 w-5" aria-hidden="true" />
                 {outOfStock ? 'Out of stock' : `${addLabel}${Number(product.price) > 0 ? ` · ${formatCurrency(total)}` : ''}`}
               </button>
@@ -378,11 +378,11 @@ const ProductPage: React.FC = () => {
             </div>
 
             {/* ---- details / reviews ---- */}
-            <section id="product-tabs" className="mt-8 border-t border-brand-line pt-6" aria-label="Product information">
+            <section id="product-tabs" className="mt-12 border-t border-brand-line pt-8" aria-label="Product information">
               <div role="tablist" aria-label="Product information" className="mb-4 flex gap-1 border-b border-brand-line">
                 {(['details', 'reviews'] as const).map((t) => (
                   <button key={t} type="button" role="tab" id={`tab-${t}`} aria-selected={tab === t} aria-controls={`panel-${t}`} onClick={() => setTab(t)}
-                    className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-semibold capitalize ${tab === t ? 'border-brand-accent text-brand-ink' : 'border-transparent text-brand-muted hover:text-brand-ink'}`}>
+                    className={`-mb-px border-b-2 px-5 py-3 text-[12px] font-semibold uppercase tracking-[0.16em] ${tab === t ? 'border-brand-accent text-brand-ink' : 'border-transparent text-brand-muted hover:text-brand-ink'}`}>
                     {t}{t === 'reviews' && reviews.length > 0 ? ` (${reviews.length})` : ''}
                   </button>
                 ))}
@@ -400,9 +400,9 @@ const ProductPage: React.FC = () => {
         </div>
 
         {related.length > 0 && (
-          <section className="mt-14" aria-labelledby="related-title">
-            <h2 id="related-title" className="mb-6 text-xl font-bold sm:text-2xl">You may also like</h2>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-4">{related.map((p) => <ProductCard key={p.id} product={p} />)}</div>
+          <section className="mt-24 border-t border-brand-line pt-16" aria-labelledby="related-title">
+            <h2 id="related-title" className="mb-10 font-display text-3xl font-semibold sm:text-4xl">You may also like</h2>
+            <div className="grid grid-cols-2 gap-x-5 gap-y-12 md:grid-cols-4 md:gap-x-7">{related.map((p) => <ProductCard key={p.id} product={p} />)}</div>
           </section>
         )}
       </div>

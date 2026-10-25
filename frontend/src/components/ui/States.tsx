@@ -3,7 +3,7 @@ import { AlertTriangle, PackageOpen } from 'lucide-react';
 
 /** Neutral shimmer block for loading placeholders. Size it with className. */
 export const Skeleton: React.FC<{ className?: string }> = ({ className = '' }) => (
-  <div className={`animate-pulse rounded-lg bg-brand-line/60 ${className}`} aria-hidden="true" />
+  <div className={`animate-pulse rounded-sm bg-brand-line/70 ${className}`} aria-hidden="true" />
 );
 
 export const Spinner: React.FC<{ label?: string }> = ({ label = 'Loading' }) => (
@@ -16,19 +16,19 @@ export const Spinner: React.FC<{ label?: string }> = ({ label = 'Loading' }) => 
 interface StateProps { title: string; description?: string; action?: React.ReactNode }
 
 export const EmptyState: React.FC<StateProps & { icon?: React.ReactNode }> = ({ title, description, action, icon }) => (
-  <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-brand-line bg-brand-subtle/60 px-6 py-14 text-center">
-    <div className="mb-4 text-brand-muted">{icon ?? <PackageOpen className="h-10 w-10" aria-hidden="true" />}</div>
-    <p className="text-base font-semibold">{title}</p>
-    {description && <p className="mt-1 max-w-md text-sm text-brand-muted">{description}</p>}
+  <div className="flex flex-col items-center justify-center rounded-sm border border-brand-line bg-brand-subtle px-6 py-16 text-center">
+    <div className="mb-5 text-brand-accent/80">{icon ?? <PackageOpen className="h-9 w-9" strokeWidth={1.25} aria-hidden="true" />}</div>
+    <p className="font-display text-xl font-semibold">{title}</p>
+    {description && <p className="mt-2 max-w-md text-sm leading-relaxed text-brand-muted">{description}</p>}
     {action && <div className="mt-5">{action}</div>}
   </div>
 );
 
 export const ErrorState: React.FC<StateProps> = ({ title, description, action }) => (
-  <div role="alert" className="flex flex-col items-center justify-center rounded-xl border border-brand-danger/40 bg-brand-danger/10 px-6 py-14 text-center">
-    <AlertTriangle className="mb-4 h-10 w-10 text-brand-danger" aria-hidden="true" />
-    <p className="text-base font-semibold">{title}</p>
-    {description && <p className="mt-1 max-w-md text-sm text-brand-muted">{description}</p>}
+  <div role="alert" className="flex flex-col items-center justify-center rounded-sm border border-brand-danger/40 bg-brand-danger/10 px-6 py-16 text-center">
+    <AlertTriangle className="mb-4 h-9 w-9 text-brand-danger" strokeWidth={1.25} aria-hidden="true" />
+    <p className="font-display text-xl font-semibold">{title}</p>
+    {description && <p className="mt-2 max-w-md text-sm leading-relaxed text-brand-muted">{description}</p>}
     {action && <div className="mt-5">{action}</div>}
   </div>
 );

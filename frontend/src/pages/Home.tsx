@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import * as Icons from 'lucide-react';
-import { ArrowRight, PackageCheck, PenLine, ShieldCheck, Sparkles, Upload } from 'lucide-react';
+import { ArrowRight, PackageCheck, PenLine, ShieldCheck, Upload } from 'lucide-react';
 import { Category, Combo, HeroContent, Product, Stat } from '../types';
 import { apiFetch } from '../utils/api';
 import { useCatalogue } from '../hooks/useCatalogue';
@@ -13,32 +13,82 @@ import Popup from '../components/Popup';
 import { ButtonLink } from '../components/ui/Button';
 import { SectionHeading } from '../components/ui/SectionHeading';
 import { Skeleton } from '../components/ui/States';
-import { getImageUrl } from '../utils/helpers';
+import { formatCurrency, getImageUrl } from '../utils/helpers';
 
 const FEATURED_COUNT = 8;
 const COMBO_COUNT = 4;
+const FALLBACK = '/placeholder.svg';
+const onImgError = (e: React.SyntheticEvent<HTMLImageElement>) => { if (!e.currentTarget.src.endsWith(FALLBACK)) e.currentTarget.src = FALLBACK; };
 
-/** Category visual: uploaded image, else its lucide icon / emoji, else a neutral tile. */
-const CategoryVisual: React.FC<{ category: Category }> = ({ category }) => {
-  const type = category.icon_type;
-  if (type === 'image' && category.image_url) {
-    return <img src={getImageUrl(category.image_url)} alt="" loading="lazy" onError={(e) => { if (!e.currentTarget.src.endsWith('/placeholder.svg')) e.currentTarget.src = '/placeholder.svg'; }} className="h-full w-full object-cover transition duration-500 md:group-hover:scale-105" />;
-  }
-  if (type === 'emoji' && category.icon) {
-    return <span className="text-4xl" aria-hidden="true">{category.icon}</span>;
-  }
-  const Icon = (category.icon && (Icons as any)[category.icon]) || Icons.Sparkles;
-  return <Icon className="h-9 w-9 text-brand-accent-ink" strokeWidth={1.5} aria-hidden="true" />;
-};
+const hasRealImage = (p: Product) => typeof p.image_url === 'string' && p.image_url.trim() !== '' && getImageUrl(p.image_url) !== FALLBACK;
+const namesOf = (c: Category): string[] => [c.name, ...(c.children || []).map((k) => k.name)];
+const productCategoryNames = (p: Product): string[] => (p.categories && p.categories.length ? p.categories.map((c) => c.name) : p.category ? [p.category] : []);
 
-/** Where a real product image will go: neutral slot, no fabricated imagery. */
-const ProductPlaceholder: React.FC = () => (
-  <div aria-hidden="true">
-    <div className="aspect-[4/5] rounded-xl bg-brand-subtle" />
-    <div className="mt-3 h-3.5 w-3/4 rounded bg-brand-line/60" />
-    <div className="mt-2 h-3.5 w-1/3 rounded bg-brand-line/60" />
+/** Quiet brand composition used wherever there is no photograph: the gold mark inside fine hairline frames. */
+const BrandArt: React.FC<{ className?: string; label?: string }> = ({ className = '', label }) => (
+  <div className={`fallback-art relative flex items-center justify-center overflow-hidden ${className}`} aria-hidden={label ? undefined : true} role={label ? 'img' : undefined} aria-label={label}>
+    <div className="absolute inset-[7%] border border-brand-accent/25" />
+    <div className="absolute inset-[13%] border border-brand-accent/15" />
+    <img src="/brand/vediqra-mark.png" alt="" className="relative h-[34%] w-auto opacity-90 drop-shadow-[0_8px_30px_rgba(201,166,70,0.25)]" />
   </div>
 );
+
+/** Image-led category tile: the category's own image, else a real product photo from it, else brand art. Always a real link. */
+const CategoryTile: React.FC<{ category: Category; image?: string; count: number; big?: boolean }> = ({ category, image, count, big }) => {
+  const Icon = (category.icon && category.icon_type !== 'image' && category.icon_type !== 'emoji' && (Icons as any)[category.icon]) || null;
+  return (
+    <Link
+      to={categoryLink(category)}
+      className={`group relative block overflow-hidden bg-brand-subtle ${big ? 'aspect-[4/5] md:aspect-auto md:h-full md:min-h-[34rem]' : 'aspect-[4/5]'}`}
+    >
+      {image ? (
+        <img src={image} alt="" loading="lazy" onError={onImgError} className="absolute inset-0 h-full w-full object-cover transition-transform duration-[900ms] ease-out group-hover:scale-[1.05]" />
+      ) : (
+        <div className="fallback-art absolute inset-0 flex items-center justify-center">
+          {category.icon_type === 'emoji' && category.icon
+            ? <span className="text-6xl opacity-80" aria-hidden="true">{category.icon}</span>
+            : Icon
+              ? <Icon className="h-14 w-14 text-brand-accent/70" strokeWidth={1} aria-hidden="true" />
+              : <img src="/brand/vediqra-mark.png" alt="" className="h-16 w-auto opacity-60" />}
+        </div>
+      )}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" aria-hidden="true" />
+      <div className="absolute inset-0 border border-white/[0.06] transition-colors group-hover:border-brand-accent/50" aria-hidden="true" />
+      <div className="absolute inset-x-0 bottom-0 p-5 md:p-7">
+        <h3 className={`font-display font-semibold leading-tight text-white ${big ? 'text-3xl md:text-4xl' : 'text-xl md:text-2xl'}`}>{category.name}</h3>
+        {category.children && category.children.length > 0 && (
+          <p className="mt-2 line-clamp-1 text-[12px] text-white/70">{category.children.map((c) => c.name).join(' · ')}</p>
+        )}
+        <p className="mt-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-accent-ink">
+          {count > 0 ? `${count} ${count === 1 ? 'product' : 'products'}` : 'Explore'}
+          <ArrowRight className="h-3.5 w-3.5 -translate-x-1 opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100" aria-hidden="true" />
+        </p>
+      </div>
+    </Link>
+  );
+};
+
+/** Hero collage built from the shop's own photographs (links to those products); brand art when there are none. */
+const HeroCollage: React.FC<{ products: Product[] }> = ({ products }) => {
+  const [main, second, third] = products;
+  if (!main) return <BrandArt className="aspect-[4/5] w-full max-w-md justify-self-center lg:max-w-none" />;
+  const Frame: React.FC<{ p: Product; className: string; priority?: boolean; right?: boolean }> = ({ p, className, priority, right }) => (
+    <Link to={`/product/${p.slug || p.id}`} className={`group img-frame absolute block ${className}`}>
+      <img src={getImageUrl(p.image_url)} alt={p.name} loading={priority ? 'eager' : 'lazy'} onError={onImgError} className="h-full w-full object-cover transition-transform duration-[900ms] ease-out group-hover:scale-[1.04]" />
+      <span className={`absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-3 pb-2.5 pt-8 text-[11px] font-medium uppercase tracking-[0.14em] text-white/90 ${right ? 'text-right' : ''}`}>
+        <span className="line-clamp-1">{p.name}</span>
+      </span>
+    </Link>
+  );
+  return (
+    <div className="relative mx-auto aspect-[5/6] w-full max-w-md sm:max-w-lg lg:max-w-none" data-testid="hero-collage">
+      <div className="absolute right-[2%] top-[4%] h-[84%] w-[64%] translate-x-3 translate-y-3 border border-brand-accent/40" aria-hidden="true" />
+      <Frame p={main} priority right className="right-[2%] top-[4%] h-[84%] w-[64%]" />
+      {second && <Frame p={second} className="bottom-[2%] left-0 h-[44%] w-[42%]" />}
+      {third && <Frame p={third} className="left-[12%] top-0 hidden h-[26%] w-[28%] sm:block" />}
+    </div>
+  );
+};
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
@@ -90,155 +140,179 @@ const Home: React.FC = () => {
   // /api/products is newest first, so the first few are honestly "new arrivals" (no curated or bestseller list exists).
   const featured = products.slice(0, FEATURED_COUNT);
 
+  // Real photographs for the hero collage, the category tiles and the personalisation panel: only the catalogue's own images.
+  const withImages = useMemo(() => products.filter(hasRealImage), [products]);
+  const heroProducts = withImages.slice(0, 3);
+  const personalisable = useMemo(() => withImages.find((p) => p.is_customizable) || null, [withImages]);
+  const tileData = useMemo(() => tree.map((c) => {
+    const names = new Set(namesOf(c));
+    const inCat = products.filter((p) => productCategoryNames(p).some((n) => names.has(n)));
+    const own = c.icon_type === 'image' && c.image_url ? getImageUrl(c.image_url) : '';
+    const photo = own && own !== FALLBACK ? own : (inCat.find(hasRealImage) ? getImageUrl(inCat.find(hasRealImage)!.image_url) : '');
+    return { category: c, image: photo, count: inCat.length };
+  }), [tree, products]);
+  const editorial = tileData.length >= 3;      // a large lead tile only when there are enough categories to balance it
+
   return (
     <div>
       {showPopup && <Popup onClose={() => setShowPopup(false)} />}
 
-      {/* 1. Hero: admin-managed slides when they exist, otherwise a text hero with an image slot */}
+      {/* 1. Hero: admin-managed slides when they exist, otherwise an editorial composition */}
       {heroes.length > 0 ? (
         <HeroSection heroes={heroes} />
       ) : (
-        <section className="relative overflow-hidden bg-brand-panel text-white">
-          <div aria-hidden="true" className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full bg-brand-accent/10 blur-3xl" />
-          <div className="container-page relative grid items-center gap-10 py-16 md:grid-cols-2 md:py-24">
+        <section className="relative overflow-hidden border-b border-brand-line">
+          <div aria-hidden="true" className="pointer-events-none absolute -left-40 top-1/3 h-[32rem] w-[32rem] rounded-full bg-brand-accent/[0.07] blur-3xl" />
+          <div className="container-page relative grid items-center gap-12 py-14 md:py-20 lg:grid-cols-[1.05fr_1fr] lg:gap-20 lg:py-24">
             <div>
-              <p className="eyebrow !text-brand-accent mb-3">Personalised products</p>
-              <h1 className="text-4xl font-extrabold leading-tight sm:text-5xl lg:text-6xl">Gifts made <span className="text-brand-accent">personal.</span></h1>
-              <p className="mt-4 max-w-md text-lg text-white/75">Add your own text and photos to mugs, frames, cushions, t-shirts and more.</p>
-              <div className="mt-8 flex flex-wrap gap-3">
+              <p className="eyebrow mb-6">Personalised products</p>
+              <h1 className="text-[2.9rem] font-semibold leading-[1.02] sm:text-6xl lg:text-[4.75rem]">Gifts made <span className="text-gold italic">personal.</span></h1>
+              <p className="mt-7 max-w-md text-[17px] leading-relaxed text-brand-muted">Add your own text and photos to mugs, frames, cushions, t-shirts and more.</p>
+              <div className="mt-10 flex flex-wrap gap-4">
                 <ButtonLink to="/products" variant="accent">Shop products <ArrowRight className="h-4 w-4" aria-hidden="true" /></ButtonLink>
-                <ButtonLink to="/custom-combo" variant="secondary" className="!border-white/30 !bg-transparent !text-white hover:!bg-white/10">Build a custom combo</ButtonLink>
+                <ButtonLink to="/custom-combo" variant="secondary">Build a custom combo</ButtonLink>
               </div>
+              <dl className="mt-14 grid max-w-md grid-cols-3 gap-6 border-t border-brand-line pt-6 text-[11px] uppercase tracking-[0.16em] text-brand-muted">
+                <div><dt className="text-brand-accent-ink">01</dt><dd className="mt-1">Choose a piece</dd></div>
+                <div><dt className="text-brand-accent-ink">02</dt><dd className="mt-1">Add your words</dd></div>
+                <div><dt className="text-brand-accent-ink">03</dt><dd className="mt-1">Add your photos</dd></div>
+              </dl>
             </div>
-            {/* image slot: replaced by real VEDIQRA photography (Admin > Marketing > Hero) */}
-            <div aria-hidden="true" className="mx-auto hidden aspect-[4/3] w-full max-w-md items-center justify-center rounded-2xl border border-brand-accent/30 bg-white/5 md:flex">
-              <span className="text-8xl font-extrabold text-brand-accent/70">V</span>
-            </div>
+            <HeroCollage products={heroProducts} />
           </div>
         </section>
       )}
 
-      {/* 2. Category discovery (read from the category tree; parents list their subcategories) */}
+      {/* 2. Service points (facts about the store itself) */}
+      <section className="border-b border-brand-line" aria-label="Service">
+        <ul className="container-page grid divide-brand-line sm:grid-cols-3 sm:divide-x">
+          {[
+            { icon: <ShieldCheck className="h-5 w-5" strokeWidth={1.5} aria-hidden="true" />, title: 'Secure checkout', text: 'Pay online by UPI or card.' },
+            { icon: <PackageCheck className="h-5 w-5" strokeWidth={1.5} aria-hidden="true" />, title: 'Track your order', text: 'Follow your order with your order number.' },
+            { icon: <PenLine className="h-5 w-5" strokeWidth={1.5} aria-hidden="true" />, title: 'Personalised on request', text: 'Add your own text and images.' },
+          ].map((f) => (
+            <li key={f.title} className="flex items-start gap-4 py-6 sm:px-8 sm:first:pl-0 sm:last:pr-0">
+              <span className="mt-0.5 text-brand-accent">{f.icon}</span>
+              <div><p className="text-[12px] font-semibold uppercase tracking-[0.16em]">{f.title}</p><p className="mt-1 text-[14px] text-brand-muted">{f.text}</p></div>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {/* 3. Category discovery (read from the category tree; parents list their subcategories) */}
       <section className="container-page section" aria-labelledby="home-categories">
-        <SectionHeading id="home-categories" title="Shop by category" eyebrow="Browse" action={{ label: 'View all products', to: '/products' }} />
+        <SectionHeading id="home-categories" title="Shop by category" eyebrow="Collections" action={{ label: 'View all products', to: '/products' }} />
         {categoriesLoading ? (
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4" aria-busy="true">
-            {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="aspect-[4/3]" />)}
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4" aria-busy="true">
+            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="aspect-[4/5]" />)}
           </div>
         ) : tree.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-brand-line bg-brand-subtle/60 px-6 py-10 text-center text-sm text-brand-muted">Categories will appear here.</p>
+          <p className="rounded-sm border border-brand-line bg-brand-subtle px-6 py-12 text-center text-sm text-brand-muted">Categories will appear here.</p>
         ) : (
-          <ul className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
-            {tree.map((parent) => (
-              <li key={parent.id}>
-                <Link to={categoryLink(parent)} className="card group flex h-full flex-col overflow-hidden transition-colors hover:border-brand-accent">
-                  <div className="flex aspect-[4/3] items-center justify-center overflow-hidden bg-brand-subtle"><CategoryVisual category={parent} /></div>
-                  <div className="flex flex-1 flex-col border-t-2 border-brand-accent/60 p-3 sm:p-4">
-                    <h3 className="flex items-center justify-between gap-2 text-sm font-bold sm:text-base">{parent.name}<ArrowRight className="h-4 w-4 shrink-0 text-brand-accent-ink transition-transform md:group-hover:translate-x-1" aria-hidden="true" /></h3>
-                    {parent.children && parent.children.length > 0 && (
-                      <p className="mt-1 line-clamp-2 text-xs text-brand-muted">{parent.children.map((c) => c.name).join(' · ')}</p>
-                    )}
-                  </div>
-                </Link>
+          <ul className={`grid grid-cols-2 gap-3 md:gap-4 ${editorial ? 'md:grid-cols-4' : tileData.length === 2 ? 'md:grid-cols-2' : 'md:grid-cols-1'}`}>
+            {tileData.map((t, i) => (
+              <li key={t.category.id} className={editorial && i === 0 ? 'col-span-2 md:row-span-2' : ''}>
+                <CategoryTile category={t.category} image={t.image} count={t.count} big={editorial && i === 0} />
               </li>
             ))}
           </ul>
         )}
       </section>
 
-      {/* 3. Featured products */}
-      <section className="bg-brand-subtle/60" aria-labelledby="home-featured">
+      {/* 4. New arrivals */}
+      <section className="border-y border-brand-line bg-brand-subtle" aria-labelledby="home-featured">
         <div className="container-page section">
           <SectionHeading id="home-featured" title="New arrivals" eyebrow="Just added" description={featured.length > 0 ? 'The latest additions to the store.' : undefined} action={featured.length > 0 ? { label: 'View all', to: '/products' } : undefined} />
           {productsRes.status === 'loading' ? (
-            <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-4" aria-busy="true">
-              {Array.from({ length: 4 }).map((_, i) => <div key={i}><Skeleton className="aspect-[4/5] w-full" /><Skeleton className="mt-3 h-4 w-3/4" /><Skeleton className="mt-2 h-4 w-1/3" /></div>)}
+            <div className="grid grid-cols-2 gap-x-5 gap-y-10 md:grid-cols-4" aria-busy="true">
+              {Array.from({ length: 4 }).map((_, i) => <div key={i}><Skeleton className="aspect-[4/5] w-full" /><Skeleton className="mt-4 h-4 w-3/4" /><Skeleton className="mt-2 h-4 w-1/3" /></div>)}
             </div>
           ) : featured.length > 0 ? (
-            <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-4">
+            <div className="grid grid-cols-2 gap-x-5 gap-y-12 md:grid-cols-4 md:gap-x-7">
               {featured.map((p) => <ProductCard key={p.id} product={p} />)}
             </div>
           ) : (
             <div>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-4">
-                {Array.from({ length: 4 }).map((_, i) => <ProductPlaceholder key={i} />)}
+              <div className="grid grid-cols-2 gap-x-5 gap-y-10 md:grid-cols-4" aria-hidden="true">
+                {Array.from({ length: 4 }).map((_, i) => <div key={i}><BrandArt className="aspect-[4/5]" /><div className="mt-4 h-3 w-3/4 bg-brand-line/60" /><div className="mt-2 h-3 w-1/3 bg-brand-line/60" /></div>)}
               </div>
-              <p className="mt-6 text-center text-sm text-brand-muted">Products are being added. Please check back soon.</p>
+              <p className="mt-8 text-center text-sm text-brand-muted">Products are being added. Please check back soon.</p>
             </div>
           )}
         </div>
       </section>
 
-      {/* 4. Personalisation */}
-      <section className="border-y border-brand-line bg-brand-panel text-white" aria-labelledby="home-personalise">
-        <div className="container-page section grid gap-10 md:grid-cols-2 md:items-center">
-          <div>
-            <p className="eyebrow !text-brand-accent mb-3">Personalisation</p>
-            <h2 id="home-personalise" className="text-3xl font-bold sm:text-4xl">Make it yours</h2>
-            <p className="mt-4 max-w-md text-white/70">Choose a personalisable product, add your text and images, and place your order. Look for the Personalisable label on a product.</p>
-            <div className="mt-8"><ButtonLink to="/products" variant="accent">Explore products</ButtonLink></div>
+      {/* 5. Personalisation */}
+      <section className="relative overflow-hidden" aria-labelledby="home-personalise">
+        <div className="container-page section grid gap-14 lg:grid-cols-[1fr_1.1fr] lg:items-center lg:gap-24">
+          {personalisable ? (
+            <Link to={`/product/${personalisable.slug || personalisable.id}`} className="group img-frame relative order-2 block aspect-[4/5] max-h-[40rem] w-full lg:order-1">
+              <img src={getImageUrl(personalisable.image_url)} alt={personalisable.name} loading="lazy" onError={onImgError} className="h-full w-full object-cover transition-transform duration-[900ms] ease-out group-hover:scale-[1.03]" />
+              <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-5 pt-14">
+                <span className="block text-[10px] font-semibold uppercase tracking-[0.2em] text-brand-accent-ink">Personalisable</span>
+                <span className="mt-1 block font-display text-xl font-semibold">{personalisable.name}</span>
+                {Number(personalisable.price) > 0 && <span className="mt-1 block text-sm text-white/75">{formatCurrency(Number(personalisable.price))}</span>}
+              </span>
+            </Link>
+          ) : (
+            <BrandArt className="order-2 aspect-[4/5] max-h-[40rem] w-full lg:order-1" />
+          )}
+          <div className="order-1 lg:order-2">
+            <p className="eyebrow mb-6">Personalisation</p>
+            <h2 id="home-personalise" className="font-display text-4xl font-semibold leading-[1.08] sm:text-5xl">Make it yours</h2>
+            <p className="mt-6 max-w-md text-[16px] leading-relaxed text-brand-muted">Choose a personalisable product, add your text and images, and place your order. Look for the Personalisable label on a product.</p>
+            <ol className="mt-10 divide-y divide-brand-line border-y border-brand-line">
+              {[
+                { icon: <PackageCheck className="h-5 w-5" strokeWidth={1.25} aria-hidden="true" />, title: 'Pick a product', text: 'Browse the categories and choose what you like.' },
+                { icon: <Upload className="h-5 w-5" strokeWidth={1.25} aria-hidden="true" />, title: 'Add your images', text: 'Upload your photos or artwork on personalisable products.' },
+                { icon: <PenLine className="h-5 w-5" strokeWidth={1.25} aria-hidden="true" />, title: 'Add your text', text: 'Write the names, dates or message you want printed.' },
+              ].map((step, i) => (
+                <li key={step.title} className="flex items-start gap-6 py-6">
+                  <span className="font-display text-3xl font-semibold leading-none text-brand-accent" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+                  <div className="flex-1"><p className="text-[15px] font-semibold"><span className="sr-only">{i + 1}. </span>{step.title}</p><p className="mt-1 text-[14px] text-brand-muted">{step.text}</p></div>
+                  <span className="mt-1 text-brand-accent/70">{step.icon}</span>
+                </li>
+              ))}
+            </ol>
+            <div className="mt-10"><ButtonLink to="/products" variant="accent">Explore products</ButtonLink></div>
           </div>
-          <ol className="space-y-4">
-            {[
-              { icon: <PackageCheck className="h-5 w-5" aria-hidden="true" />, title: 'Pick a product', text: 'Browse the categories and choose what you like.' },
-              { icon: <Upload className="h-5 w-5" aria-hidden="true" />, title: 'Add your images', text: 'Upload your photos or artwork on personalisable products.' },
-              { icon: <PenLine className="h-5 w-5" aria-hidden="true" />, title: 'Add your text', text: 'Write the names, dates or message you want printed.' },
-            ].map((step, i) => (
-              <li key={step.title} className="flex gap-4 rounded-xl border border-white/10 p-4">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-accent text-[#111111]">{step.icon}</span>
-                <div><p className="font-semibold"><span className="mr-2 text-white/40">{i + 1}.</span>{step.title}</p><p className="text-sm text-white/70">{step.text}</p></div>
-              </li>
-            ))}
-          </ol>
         </div>
       </section>
 
-      {/* 5. Combos / custom combo */}
-      <section className="container-page section" aria-labelledby="home-combos">
-        {combos.length > 0 ? (
-          <>
-            <SectionHeading id="home-combos" title="Combos" eyebrow="Sets" description="Sets of products sold together at one price." action={{ label: 'All combos', to: '/combos' }} />
-            <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-4">
-              {combos.slice(0, COMBO_COUNT).map((c) => <ComboCard key={c.id} combo={c} />)}
-            </div>
-          </>
-        ) : (
-          <h2 id="home-combos" className="sr-only">Build a custom combo</h2>
-        )}
-        <div className={`flex flex-col items-start gap-5 rounded-2xl border border-brand-accent/30 bg-brand-panel p-6 text-white sm:flex-row sm:items-center sm:justify-between sm:p-8 ${combos.length > 0 ? 'mt-12' : ''}`}>
-          <div className="flex items-start gap-4">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-accent text-[#111111]"><Sparkles className="h-5 w-5" aria-hidden="true" /></span>
-            <div>
-              <p className="text-lg font-bold">Build your own combo</p>
-              <p className="mt-1 max-w-md text-sm text-white/75">Pick the products you want and see the combo price before you order.</p>
+      {/* 6. Combos / custom combo */}
+      <section className="border-t border-brand-line bg-brand-subtle" aria-labelledby="home-combos">
+        <div className="container-page section">
+          {combos.length > 0 ? (
+            <>
+              <SectionHeading id="home-combos" title="Combos" eyebrow="Sets" description="Sets of products sold together at one price." action={{ label: 'All combos', to: '/combos' }} />
+              <div className="grid grid-cols-2 gap-x-5 gap-y-12 md:grid-cols-4 md:gap-x-7">
+                {combos.slice(0, COMBO_COUNT).map((c) => <ComboCard key={c.id} combo={c} />)}
+              </div>
+            </>
+          ) : (
+            <h2 id="home-combos" className="sr-only">Build a custom combo</h2>
+          )}
+          <div className={`relative overflow-hidden border border-brand-accent/30 bg-brand-surface ${combos.length > 0 ? 'mt-20' : ''}`}>
+            <div aria-hidden="true" className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full border border-brand-accent/20" />
+            <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-10 h-72 w-72 rounded-full border border-brand-accent/10" />
+            <div className="relative grid gap-8 px-7 py-12 md:grid-cols-[1fr_auto] md:items-center md:px-14 md:py-16">
+              <div>
+                <p className="eyebrow mb-5">Custom combo</p>
+                <p className="font-display text-3xl font-semibold leading-tight sm:text-4xl">Build your own combo</p>
+                <p className="mt-4 max-w-md text-[15px] leading-relaxed text-brand-muted">Pick the products you want and see the combo price before you order.</p>
+              </div>
+              <ButtonLink to="/custom-combo" variant="accent" className="justify-self-start">Start building <ArrowRight className="h-4 w-4" aria-hidden="true" /></ButtonLink>
             </div>
           </div>
-          <ButtonLink to="/custom-combo" variant="accent" className="shrink-0">Start building <ArrowRight className="h-4 w-4" aria-hidden="true" /></ButtonLink>
         </div>
-      </section>
-
-      {/* 6. Service points (facts about the store itself) */}
-      <section className="border-y border-brand-line bg-brand-subtle/60" aria-label="Service">
-        <ul className="container-page grid gap-6 py-8 sm:grid-cols-3">
-          {[
-            { icon: <ShieldCheck className="h-6 w-6" aria-hidden="true" />, title: 'Secure checkout', text: 'Pay online by UPI or card.' },
-            { icon: <PackageCheck className="h-6 w-6" aria-hidden="true" />, title: 'Track your order', text: 'Follow your order with your order number.' },
-            { icon: <PenLine className="h-6 w-6" aria-hidden="true" />, title: 'Personalised on request', text: 'Add your own text and images.' },
-          ].map((f) => (
-            <li key={f.title} className="flex items-start gap-3">
-              <span className="text-brand-accent-ink">{f.icon}</span>
-              <div><p className="text-sm font-bold">{f.title}</p><p className="text-sm text-brand-muted">{f.text}</p></div>
-            </li>
-          ))}
-        </ul>
       </section>
 
       {/* 7. Numbers: only when configured in the admin */}
       {stats.length > 0 && (
         <section className="container-page section" aria-label="In numbers">
-          <ul className="grid grid-cols-2 gap-6 text-center md:grid-cols-4">
+          <ul className="grid grid-cols-2 gap-10 text-center md:grid-cols-4">
             {stats.map((s) => (
-              <li key={s.label}><p className="text-3xl font-extrabold">{s.value}</p><p className="mt-1 text-sm text-brand-muted">{s.label}</p></li>
+              <li key={s.label}><p className="font-display text-4xl font-semibold text-gold">{s.value}</p><p className="mt-2 text-[11px] uppercase tracking-[0.18em] text-brand-muted">{s.label}</p></li>
             ))}
           </ul>
         </section>

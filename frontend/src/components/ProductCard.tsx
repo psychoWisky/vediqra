@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Star } from 'lucide-react';
+import { PenLine, Star } from 'lucide-react';
 import { Product } from '../types';
 import { formatCurrency, getImageUrl } from '../utils/helpers';
 import { getExtraGroups } from '../utils/options';
@@ -61,10 +61,12 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const soldOut = stock !== null && stock <= 0;
   const lowStock = stock !== null && stock > 0 && stock <= LOW_STOCK;
   const currentImage = images[Math.min(imgIdx, Math.max(images.length - 1, 0))];
+  // the product's own first category (real catalogue data), shown as a quiet label above the name
+  const categoryName = product.categories?.[0]?.name || product.category || '';
 
   return (
     <article className="group flex flex-col" onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
-      <Link to={href} tabIndex={-1} aria-hidden="true" className="relative block overflow-hidden rounded-xl bg-brand-subtle">
+      <Link to={href} tabIndex={-1} aria-hidden="true" className="img-frame block">
         <div className="aspect-[4/5]">
           {!imageLoaded && currentImage && <div className="absolute inset-0 animate-pulse bg-brand-line/50" aria-hidden="true" />}
           <img
@@ -73,21 +75,23 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             loading="lazy"
             onLoad={() => setImageLoaded(true)}
             onError={(e) => { setImageLoaded(true); if (!e.currentTarget.src.endsWith('/placeholder.svg')) e.currentTarget.src = '/placeholder.svg'; }}
-            className={`h-full w-full object-cover transition duration-500 md:group-hover:scale-105 ${soldOut ? 'opacity-60' : ''}`}
+            className={`h-full w-full object-cover transition duration-700 ease-out md:group-hover:scale-[1.04] ${soldOut ? 'opacity-60' : ''}`}
           />
         </div>
 
-        <div className="absolute left-2 top-2 flex flex-col items-start gap-1.5">
+        <div className="absolute left-3 top-3 flex flex-col items-start gap-1.5">
           {soldOut && <Badge tone="dark">Sold out</Badge>}
           {!soldOut && product.discount_percentage ? <Badge tone="danger">-{product.discount_percentage}%</Badge> : null}
           {lowStock && <Badge tone="neutral">Only {stock} left</Badge>}
         </div>
         {product.is_customizable && (
-          <div className="absolute right-2 top-2"><Badge tone="accent">Personalisable</Badge></div>
+          <div className="absolute bottom-0 left-0 right-0 flex items-center gap-2 bg-gradient-to-t from-black/70 to-transparent px-3 pb-2.5 pt-8 text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-accent-ink">
+            <PenLine className="h-3 w-3" aria-hidden="true" /> Personalisable
+          </div>
         )}
       </Link>
 
-      <div className="flex flex-1 flex-col pt-3">
+      <div className="flex flex-1 flex-col pt-4">
         {activeColors.length > 1 && (
           <div className="mb-2 flex items-center gap-1.5" role="group" aria-label={`${product.name} colours`}>
             {activeColors.slice(0, 5).map((c) => (
@@ -98,7 +102,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                 aria-label={c.color_name}
                 aria-pressed={selectedColor === c.id}
                 title={c.color_name}
-                className={`h-5 w-5 rounded-full border ${selectedColor === c.id ? 'ring-2 ring-brand-accent ring-offset-1' : 'border-brand-line'}`}
+                className={`h-5 w-5 rounded-full border ${selectedColor === c.id ? 'ring-1 ring-brand-accent ring-offset-2 ring-offset-brand-surface' : 'border-brand-ink/25'}`}
                 style={{ backgroundColor: c.color_code || '#ccc' }}
               />
             ))}
@@ -106,8 +110,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           </div>
         )}
 
-        <h3 className="text-sm font-semibold leading-snug">
-          <Link to={href} className="line-clamp-2 hover:text-brand-accent-ink">{product.name}{soldOut && <span className="sr-only"> (sold out)</span>}</Link>
+        {categoryName && <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-brand-muted">{categoryName}</p>}
+        <h3 className="text-[15px] font-medium leading-snug">
+          <Link to={href} className="link-line line-clamp-2 transition-colors hover:text-brand-accent-ink">{product.name}{soldOut && <span className="sr-only"> (sold out)</span>}</Link>
         </h3>
 
         {reviewCount > 0 && (
@@ -120,12 +125,12 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
         <div className="mt-auto pt-2">
           {price > 0 && (
-            <p className="flex items-baseline gap-2">
-              <span className="text-base font-bold">{formatCurrency(price)}</span>
+            <p className="flex items-baseline gap-2.5">
+              <span className="font-display text-[17px] font-semibold">{formatCurrency(price)}</span>
               {original > price && <span className="text-xs text-brand-muted line-through">{formatCurrency(original)}</span>}
             </p>
           )}
-          {hasOptions && <p className="mt-0.5 text-xs text-brand-muted">Options available</p>}
+          {hasOptions && <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-brand-muted">Options available</p>}
         </div>
       </div>
     </article>

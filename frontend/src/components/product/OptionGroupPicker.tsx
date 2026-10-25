@@ -40,10 +40,10 @@ const OptionGroupPicker: React.FC<Props> = ({ name, required, values, selectedId
 
   return (
     <fieldset id={fieldId} tabIndex={-1} aria-describedby={error ? errId : undefined} aria-invalid={error ? true : undefined} className="min-w-0 focus:outline-none">
-      <legend className="mb-2 flex w-full flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold">
+      <legend className="mb-3 flex w-full flex-wrap items-center gap-x-3 gap-y-1 text-[12px] font-semibold uppercase tracking-[0.16em]">
         <span>{name}</span>
         <span className={required ? 'badge-dark' : 'badge-neutral'}>{required ? 'Required' : 'Optional'}</span>
-        {selected && <span className="font-normal text-brand-muted">{selected.label}</span>}
+        {selected && <span className="font-normal normal-case tracking-normal text-brand-muted">{selected.label}</span>}
         {!required && selected && (
           <button type="button" onClick={() => onSelect(null)} className="ml-auto text-xs font-medium underline underline-offset-2 hover:text-brand-accent-ink">Clear</button>
         )}
@@ -71,9 +71,9 @@ const OptionGroupPicker: React.FC<Props> = ({ name, required, values, selectedId
               />
               <label
                 htmlFor={inputId}
-                className={`relative flex min-h-[44px] cursor-pointer items-center gap-2 rounded-xl border-2 px-3 py-2 text-sm transition-colors
+                className={`relative flex min-h-[46px] cursor-pointer items-center gap-2 rounded-sm border px-4 py-2 text-sm transition-colors
                   peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-accent-ink
-                  ${checked ? 'border-brand-accent bg-brand-accent-soft font-semibold' : 'border-brand-line hover:border-brand-accent/60'}
+                  ${checked ? 'border-brand-accent bg-brand-accent/10 font-semibold' : 'border-brand-line hover:border-brand-accent/60'}
                   ${soldOut ? 'cursor-not-allowed bg-brand-subtle/60 text-brand-muted' : ''} ${visual ? 'flex-col justify-center text-center' : ''}`}
               >
                 {v.image_url ? (

@@ -47,25 +47,27 @@
    ------------------------------------------------------------------------------------------------ */
 :root.theme-dark {
   color-scheme: dark;
-  --brand-ink: 245 245 245;
-  --brand-ink-soft: 214 214 214;
-  --brand-surface: 11 11 11;
-  --brand-subtle: 17 17 17;
-  --brand-line: 48 48 48;
-  --brand-muted: 179 179 179;
+  --brand-ink: 244 240 232;          /* warm white */
+  --brand-ink-soft: 214 209 200;
+  --brand-surface: 10 10 10;         /* page */
+  --brand-subtle: 16 16 15;          /* alternate band */
+  --brand-line: 42 40 36;            /* warm hairline */
+  --brand-muted: 166 160 150;        /* warm grey text (7:1 on the page) */
   --brand-accent: 201 166 70;
-  --brand-accent-ink: 214 182 95;
-  --brand-accent-soft: 38 32 16;
+  --brand-accent-ink: 218 187 100;   /* gold as text on dark */
+  --brand-accent-soft: 34 29 16;
   --brand-danger: 248 113 113;
   --brand-success: 74 222 128;
-  --brand-elevated: 23 23 23;
-  --brand-input: 20 20 20;
+  --brand-elevated: 20 20 19;
+  --brand-input: 16 16 15;
   --brand-fill: 201 166 70;
-  --brand-fill-soft: 214 182 95;
+  --brand-fill-soft: 218 187 100;
   --brand-on-fill: 17 17 17;
-  --brand-panel: 17 17 17;
-  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.5);
-  --shadow-pop: 0 16px 40px -8px rgb(0 0 0 / 0.7);
+  --brand-panel: 14 14 13;
+  --shadow-card: none;
+  --shadow-pop: 0 24px 60px -12px rgb(0 0 0 / 0.8);
+  --section-y: 4.5rem;
+  --section-y-md: 7rem;
 }
 
 @layer base {
@@ -136,6 +138,54 @@
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
   }
+}
+
+/* ------------------------------------------------------------------------------------------------
+   Storefront editorial layer. Everything here is wrapped in :where(:root.theme-dark) so it has the SAME specificity as the
+   base rules above (later wins) and the admin panel, which never gets `theme-dark`, is untouched.
+   ------------------------------------------------------------------------------------------------ */
+@layer components {
+  :where(:root.theme-dark) h1,
+  :where(:root.theme-dark) .font-display { font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; font-weight: 600; letter-spacing: -0.012em; }
+
+  :where(:root.theme-dark) .btn { @apply rounded-sm px-6 py-3 text-[12px] font-semibold uppercase tracking-[0.12em] min-h-[46px]; }
+  :where(:root.theme-dark) .btn-primary,
+  :where(:root.theme-dark) .btn-accent { @apply bg-brand-accent text-[#111111] hover:bg-brand-accent-ink; }
+  :where(:root.theme-dark) .btn-secondary { @apply border-brand-ink/35 text-brand-ink hover:border-brand-accent hover:bg-transparent hover:text-brand-accent-ink; }
+  :where(:root.theme-dark) .btn-ghost { @apply normal-case tracking-normal text-[13px] hover:bg-brand-ink/5; }
+  :where(:root.theme-dark) .btn-sm { @apply px-4 py-2 text-[11px] min-h-[38px]; }
+  :where(:root.theme-dark) .btn-ghost.btn-sm { @apply px-3; }
+
+  :where(:root.theme-dark) .input { @apply rounded-sm border-brand-line bg-brand-input px-4 py-3 text-[15px]; }
+  :where(:root.theme-dark) .card { @apply rounded-sm border-brand-line bg-brand-elevated; }
+
+  :where(:root.theme-dark) .badge { @apply rounded-sm px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]; }
+  :where(:root.theme-dark) .badge-neutral { @apply bg-brand-ink/10 text-brand-ink; }
+  :where(:root.theme-dark) .badge-accent { @apply bg-brand-accent/15 text-brand-accent-ink; }
+  :where(:root.theme-dark) .badge-dark { @apply bg-black/70 text-brand-ink; }
+
+  :where(:root.theme-dark) .eyebrow { @apply inline-flex items-center gap-3 text-[11px] tracking-[0.22em] text-brand-accent-ink; }
+  :where(:root.theme-dark) .eyebrow::before { content: ''; width: 1.75rem; height: 1px; background: currentColor; opacity: 0.8; }
+
+  /* every corner is tighter: editorial, not "app" */
+  :where(:root.theme-dark) .rounded-xl,
+  :where(:root.theme-dark) .rounded-2xl { border-radius: 4px; }
+  :where(:root.theme-dark) .rounded-lg { border-radius: 3px; }
+  :where(:root.theme-dark) .rounded-md { border-radius: 2px; }
+
+  /* shared editorial helpers */
+  .hairline { border-color: rgb(var(--brand-line)); }
+  .gold-rule { height: 1px; background: linear-gradient(90deg, rgb(var(--brand-accent) / 0.9), rgb(var(--brand-accent) / 0));  }
+  .text-gold { background: linear-gradient(100deg, #F1D98D 0%, #C9A646 45%, #E9CF86 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .link-line { background-image: linear-gradient(currentColor, currentColor); background-size: 0 1px; background-position: 0 100%; background-repeat: no-repeat; transition: background-size .35s ease; }
+  .link-line:hover, .group:hover .link-line, .group:focus-visible .link-line { background-size: 100% 1px; }
+  .img-frame { position: relative; overflow: hidden; background: rgb(var(--brand-subtle)); }
+  .img-frame::after { content: ''; position: absolute; inset: 0; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.06); pointer-events: none; }
+  /* quiet pinstripe + glow used behind image-less compositions */
+  .fallback-art { background:
+      radial-gradient(120% 90% at 78% 8%, rgb(201 166 70 / 0.16), transparent 55%),
+      repeating-linear-gradient(135deg, rgb(255 255 255 / 0.025) 0 1px, transparent 1px 14px),
+      rgb(var(--brand-subtle)); }
 }
 
 /* dark scrollbars (storefront only; admin keeps the light ones below) */

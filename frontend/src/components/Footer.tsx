@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Instagram, Mail, MapPin, Phone } from 'lucide-react';
+import { ArrowUpRight, Instagram, Mail, MapPin, Phone } from 'lucide-react';
 import { BRAND } from '../config/brand';
 import { useCategoryTree, categoryLink } from '../hooks/useCategoryTree';
 import Logo from './Logo';
@@ -13,8 +13,8 @@ interface FooterProps {
   onOpenReturns: () => void;
 }
 
-const linkCls = 'text-sm text-white/70 transition-colors hover:text-white';
-const headCls = 'mb-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-accent';
+const linkCls = 'text-[14px] text-white/65 transition-colors hover:text-brand-accent-ink';
+const headCls = 'mb-5 text-[11px] font-semibold uppercase tracking-[0.22em] text-brand-accent';
 
 const Footer: React.FC<FooterProps> = ({ logo, onLogoError, onOpenFAQ, onOpenShipping, onOpenReturns }) => {
   const { tree } = useCategoryTree();
@@ -28,17 +28,30 @@ const Footer: React.FC<FooterProps> = ({ logo, onLogoError, onOpenFAQ, onOpenShi
 
   return (
     <footer className="border-t border-brand-line bg-brand-panel text-white">
-      <div className="container-page grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-4">
+      {/* closing statement */}
+      <div className="border-b border-white/10">
+        <div className="container-page flex flex-col items-start justify-between gap-8 py-14 md:flex-row md:items-end md:py-20">
+          <div className="max-w-2xl">
+            <p className="eyebrow mb-5">VEDIQRA</p>
+            <p className="font-display text-3xl font-semibold leading-[1.15] sm:text-4xl md:text-5xl">Gifts that carry your <span className="text-gold">own words and faces.</span></p>
+          </div>
+          <Link to="/products" onClick={() => window.scrollTo(0, 0)} className="group inline-flex items-center gap-3 border-b border-brand-accent/70 pb-2 text-[12px] font-semibold uppercase tracking-[0.18em] text-white transition-colors hover:border-brand-accent hover:text-brand-accent-ink">
+            Explore the collection <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden="true" />
+          </Link>
+        </div>
+      </div>
+
+      <div className="container-page grid gap-12 py-14 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_1.4fr]">
         <div>
           <Link to="/" onClick={() => window.scrollTo(0, 0)} aria-label="VEDIQRA home" className="inline-block">
             <Logo src={logo} onError={onLogoError} tone="light" />
           </Link>
-          <p className="mt-4 max-w-xs text-sm text-white/70">{BRAND.tagline}</p>
+          <p className="mt-5 max-w-xs text-[14px] leading-relaxed text-white/60">{BRAND.tagline}</p>
           {socials.length > 0 && (
-            <ul className="mt-5 flex gap-3">
+            <ul className="mt-6 flex gap-2">
               {socials.map((s) => (
                 <li key={s.label}>
-                  <a href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.label} className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 transition-colors hover:bg-brand-accent hover:text-[#111111]">{s.icon}</a>
+                  <a href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.label} className="flex h-10 w-10 items-center justify-center rounded-sm border border-white/15 transition-colors hover:border-brand-accent hover:text-brand-accent-ink">{s.icon}</a>
                 </li>
               ))}
             </ul>
@@ -87,7 +100,7 @@ const Footer: React.FC<FooterProps> = ({ logo, onLogoError, onOpenFAQ, onOpenShi
         </div>
       </div>
       <div className="border-t border-white/10">
-        <div className="container-page py-6 text-center text-xs text-white/50">© {new Date().getFullYear()} {BRAND.name}. All rights reserved. <span className="whitespace-nowrap">Developed by <span className="text-brand-accent-ink">GOBT</span>.</span></div>
+        <div className="container-page flex flex-col items-center justify-between gap-2 py-6 text-center text-xs text-white/45 sm:flex-row sm:text-left">© {new Date().getFullYear()} {BRAND.name}. All rights reserved. <span className="whitespace-nowrap">Developed by <span className="text-brand-accent-ink">GOBT</span>.</span></div>
       </div>
     </footer>
   );

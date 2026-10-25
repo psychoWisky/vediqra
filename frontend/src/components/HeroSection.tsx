@@ -121,7 +121,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({
   return (
     <div aria-roledescription={heroes.length > 1 ? 'carousel' : undefined}
       aria-label={heroes.length > 1 ? 'Featured banners' : undefined}
-      className="relative h-[72vh] max-h-[760px] min-h-[460px] overflow-hidden bg-brand-panel md:h-[80vh] md:min-h-[560px]">
+      className="relative h-[76vh] max-h-[820px] min-h-[500px] overflow-hidden border-b border-brand-line bg-brand-panel md:h-[84vh] md:min-h-[600px]">
       {/* Background Media */}
       <AnimatePresence mode="wait">
         <motion.div
@@ -159,15 +159,15 @@ const HeroSection: React.FC<HeroSectionProps> = ({
             />
           )}
           
-          {/* Dynamic Overlay - changes based on content alignment */}
-          <div 
+          {/* Overlay: darker on the text side */}
+          <div
             className={`absolute inset-0 ${
-              alignment.text === 'text-left' 
-                ? 'bg-gradient-to-r from-black/80 via-black/60 to-transparent' 
+              alignment.text === 'text-left'
+                ? 'bg-gradient-to-r from-black/85 via-black/55 to-black/10'
                 : alignment.text === 'text-right'
-                ? 'bg-gradient-to-l from-black/80 via-black/60 to-transparent'
-                : 'bg-black/50'
-            }`} 
+                ? 'bg-gradient-to-l from-black/85 via-black/55 to-black/10'
+                : 'bg-black/55'
+            }`}
           />
         </motion.div>
       </AnimatePresence>
@@ -183,21 +183,21 @@ const HeroSection: React.FC<HeroSectionProps> = ({
             transition={{ duration: 0.8, delay: 0.2 }}
             className={`${alignment.content} ${alignment.text} text-white`}
           >
-            <h1 className="text-4xl sm:text-5xl md:text-7xl font-heading font-bold mb-4 md:mb-6 leading-tight">
+            <h1 className="mb-5 text-[2.6rem] font-semibold leading-[1.05] sm:text-6xl md:mb-7 md:text-7xl">
               {currentHero.title}
             </h1>
-            <p className="text-lg md:text-2xl text-gray-200 mb-8 leading-relaxed">
+            <p className="mb-10 max-w-xl text-[17px] leading-relaxed text-white/80 md:text-xl">
               {currentHero.subtitle}
             </p>
             {currentHero.cta_text && currentHero.cta_link && (
               <CtaLink
                 href={currentHero.cta_link}
-                className={`inline-flex items-center px-6 py-3 md:px-8 md:py-4 bg-brand-accent text-[#111111] rounded-xl hover:bg-brand-accent-ink transition-all duration-300 text-base md:text-lg font-semibold group ${
+                className={`btn btn-accent group !px-8 ${
                   alignment.text === 'text-center' ? 'mx-auto' : ''
                 }`}
               >
                 {currentHero.cta_text}
-                <ChevronRight className="ml-2 h-5 w-5 group-hover:translate-x-2 transition-transform" aria-hidden="true" />
+                <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
               </CtaLink>
             )}
           </motion.div>
@@ -210,14 +210,14 @@ const HeroSection: React.FC<HeroSectionProps> = ({
           <button
             onClick={togglePlay}
             aria-label={isPlaying ? 'Pause video' : 'Play video'}
-            className="p-3 bg-white/20 backdrop-blur-sm rounded-full hover:bg-white/40 transition-colors text-white"
+            className="flex h-11 w-11 items-center justify-center rounded-sm border border-white/25 bg-black/30 text-white backdrop-blur-sm transition-colors hover:border-brand-accent hover:text-brand-accent-ink"
           >
             {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
           </button>
           <button
             onClick={toggleMute}
             aria-label={isMuted ? 'Unmute video' : 'Mute video'}
-            className="p-3 bg-white/20 backdrop-blur-sm rounded-full hover:bg-white/40 transition-colors text-white"
+            className="flex h-11 w-11 items-center justify-center rounded-sm border border-white/25 bg-black/30 text-white backdrop-blur-sm transition-colors hover:border-brand-accent hover:text-brand-accent-ink"
           >
             {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
           </button>
@@ -230,14 +230,14 @@ const HeroSection: React.FC<HeroSectionProps> = ({
           <button
             onClick={prevSlide}
             aria-label="Previous banner"
-            className="absolute left-2 md:left-8 top-1/2 -translate-y-1/2 z-20 p-3 bg-white/20 backdrop-blur-sm rounded-full hover:bg-white/40 transition-colors text-white"
+            className="absolute left-2 md:left-8 top-1/2 -translate-y-1/2 z-20 flex h-12 w-12 items-center justify-center rounded-sm border border-white/25 bg-black/30 text-white backdrop-blur-sm transition-colors hover:border-brand-accent hover:text-brand-accent-ink"
           >
             <ChevronLeft className="h-6 w-6" />
           </button>
           <button
             onClick={nextSlide}
             aria-label="Next banner"
-            className="absolute right-2 md:right-8 top-1/2 -translate-y-1/2 z-20 p-3 bg-white/20 backdrop-blur-sm rounded-full hover:bg-white/40 transition-colors text-white"
+            className="absolute right-2 md:right-8 top-1/2 -translate-y-1/2 z-20 flex h-12 w-12 items-center justify-center rounded-sm border border-white/25 bg-black/30 text-white backdrop-blur-sm transition-colors hover:border-brand-accent hover:text-brand-accent-ink"
           >
             <ChevronRight className="h-6 w-6" />
           </button>
@@ -250,7 +250,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({
           type="button"
           onClick={() => setRotating((r) => !r)}
           aria-label={rotating ? 'Pause automatic slide rotation' : 'Resume automatic slide rotation'}
-          className="absolute bottom-5 left-2 md:bottom-6 md:left-8 z-20 flex h-11 w-11 items-center justify-center bg-white/20 backdrop-blur-sm rounded-full hover:bg-white/40 transition-colors text-white"
+          className="absolute bottom-5 left-2 md:bottom-6 md:left-8 z-20 flex h-11 w-11 items-center justify-center rounded-sm border border-white/25 bg-black/30 text-white backdrop-blur-sm transition-colors hover:border-brand-accent hover:text-brand-accent-ink"
         >
           {rotating ? <Pause className="h-5 w-5" aria-hidden="true" /> : <Play className="h-5 w-5" aria-hidden="true" />}
         </button>
@@ -258,19 +258,21 @@ const HeroSection: React.FC<HeroSectionProps> = ({
 
       {/* Slide Indicators */}
       {heroes.length > 1 && (
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+        <div className="absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 items-end gap-2 md:bottom-7">
           {heroes.map((_, index) => (
             <button
               key={index}
               onClick={() => setCurrentIndex(index)}
               aria-label={`Show banner ${index + 1} of ${heroes.length}`}
               aria-current={index === currentIndex}
-              className={`h-2 rounded-full transition-all ${
+              className="group flex h-8 items-center px-1"
+            >
+              <span className={`block h-[3px] transition-all ${
                 index === currentIndex
-                  ? 'w-8 bg-brand-accent'
-                  : 'w-2 bg-white/50 hover:bg-white/80'
-              }`}
-            />
+                  ? 'w-10 bg-brand-accent'
+                  : 'w-6 bg-white/40 group-hover:bg-white/80'
+              }`} />
+            </button>
           ))}
         </div>
       )}

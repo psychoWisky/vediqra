@@ -121,14 +121,14 @@ const HeaderSearch: React.FC<{ className?: string; onDone?: () => void }> = ({ c
             onFocus={() => { if (typed) setOpen(true); }}
             onKeyDown={onKeyDown}
             placeholder="Search products"
-            className="input !min-h-[44px] !rounded-full !py-2 !pl-9 !pr-16"
+            className="input !min-h-[44px] !rounded-sm !border-brand-ink/20 !bg-transparent !py-2 !pl-9 !pr-16 !text-[14px] focus:!border-brand-accent"
           />
           {q && (
             <button
               type="button"
               aria-label="Clear search text"
               onClick={() => { setQ(''); setTyped(false); setOpen(false); setItems([]); inputRef.current?.focus(); }}
-              className="absolute right-9 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-brand-muted hover:text-brand-ink"
+              className="absolute right-10 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-sm text-brand-muted hover:text-brand-ink"
             >
               <X className="h-4 w-4" aria-hidden="true" />
             </button>
@@ -136,7 +136,7 @@ const HeaderSearch: React.FC<{ className?: string; onDone?: () => void }> = ({ c
           <button
             type="submit"
             aria-label="Search"
-            className="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-brand-accent text-[#111111] hover:brightness-95"
+            className="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-sm bg-brand-accent text-[#111111] transition-colors hover:bg-brand-accent-ink"
           >
             <Search className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -144,7 +144,7 @@ const HeaderSearch: React.FC<{ className?: string; onDone?: () => void }> = ({ c
       </form>
 
       {canSuggest && (
-        <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-[70vh] overflow-y-auto rounded-xl border border-brand-line bg-brand-elevated shadow-pop">
+        <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-[70vh] overflow-y-auto rounded-sm border border-brand-line bg-brand-elevated shadow-pop">
           <ul id={listId} role="listbox" aria-label="Search suggestions" className="py-1">
             {items.map((p, i) => {
               const price = Number(p.price) || 0;
@@ -164,7 +164,7 @@ const HeaderSearch: React.FC<{ className?: string; onDone?: () => void }> = ({ c
                     alt=""
                     loading="lazy"
                     onError={(e) => { if (!e.currentTarget.src.endsWith('/placeholder.svg')) e.currentTarget.src = '/placeholder.svg'; }}      // same fallback as the product cards
-                    className="h-10 w-10 shrink-0 rounded-md bg-brand-subtle object-cover"
+                    className="h-11 w-11 shrink-0 rounded-sm bg-brand-subtle object-cover"
                   />
                   <span className="min-w-0 flex-1 truncate text-sm font-medium">{p.name}</span>
                   {price > 0 && <span className="shrink-0 text-sm text-brand-muted">{formatCurrency(price)}</span>}

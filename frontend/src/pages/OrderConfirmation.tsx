@@ -342,13 +342,13 @@ export default function OrderConfirmation() {
       <div className="mx-auto max-w-3xl">
         <div className="text-center" role="status">
           <span className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-brand-success/15 text-brand-success" aria-hidden="true"><CheckCircle className="h-9 w-9" /></span>
-          <h1 className="text-3xl font-extrabold sm:text-4xl">Thank you, your order is placed</h1>
+          <h1 className="text-4xl font-semibold sm:text-5xl">Thank you, your order is placed</h1>
           <p className="mt-2 text-brand-muted">We have received your order{order.customer_name ? `, ${order.customer_name.split(' ')[0]}` : ''}. A confirmation is sent to {order.customer_email || 'your email'}.</p>
         </div>
 
         <div className="card mt-8 p-5 text-center" data-testid="order-number">
           <p className="text-sm text-brand-muted">Order number</p>
-          <p className="mt-1 flex items-center justify-center gap-2 text-2xl font-extrabold tracking-wide">
+          <p className="mt-1 flex items-center justify-center gap-2 font-display text-3xl font-semibold tracking-wide">
             <span className="font-semibold" data-testid="order-number-value">{displayOrderId}</span>
             <button type="button" onClick={handleCopyOrderId} aria-label="Copy order number" className="btn-ghost btn-sm !px-2"><Copy className="h-4 w-4" aria-hidden="true" /></button>
           </p>

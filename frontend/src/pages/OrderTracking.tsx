@@ -66,7 +66,7 @@ const OrderTracking: React.FC = () => {
   return (
     <div className="container-page py-8 md:py-12">
       <div className="mx-auto max-w-2xl">
-        <h1 className="text-2xl font-bold sm:text-3xl">Track your order</h1>
+        <h1 className="text-4xl font-semibold sm:text-5xl">Track your order</h1>
         <p className="mt-2 text-brand-muted">Enter the order number from your confirmation and the mobile number you used at checkout.</p>
 
         <form onSubmit={track} className="card mt-6 space-y-4 p-5" noValidate>
@@ -92,7 +92,7 @@ const OrderTracking: React.FC = () => {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 id="tr-result" className="text-sm text-brand-muted">Order number</h2>
-                  <p className="flex items-center gap-2 text-xl font-extrabold">
+                  <p className="flex items-center gap-2 font-display text-2xl font-semibold">
                     <span data-testid="track-number">{number}</span>
                     <button type="button" onClick={() => { navigator.clipboard?.writeText(number); setCopied(true); setTimeout(() => setCopied(false), 2000); }} aria-label="Copy order number" className="btn-ghost btn-sm !px-2"><Copy className="h-4 w-4" aria-hidden="true" /></button>
                   </p>

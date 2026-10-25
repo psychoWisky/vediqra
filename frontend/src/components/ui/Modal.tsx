@@ -66,7 +66,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
       <div className="absolute inset-0 bg-black/70" aria-hidden="true" onMouseDown={onClose} />
       <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className={panel}>
         <div className="flex items-center justify-between border-b border-brand-line px-5 py-4 sm:px-6">
-          <h2 id={titleId} className={hideTitle ? 'sr-only' : 'text-lg font-bold'}>{title}</h2>
+          <h2 id={titleId} className={hideTitle ? 'sr-only' : 'font-display text-xl font-semibold'}>{title}</h2>
           {hideTitle && <span aria-hidden="true" />}
           <button type="button" onClick={onClose} aria-label="Close" className="btn-ghost btn-sm !px-2">
             <X className="h-5 w-5" aria-hidden="true" />

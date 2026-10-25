@@ -15,8 +15,9 @@ interface HeaderProps {
   onOpenFAQ: () => void;
 }
 
+// Editorial navigation: small caps, wide tracking, a gold hairline that draws in under the active / hovered item.
 const navLink = ({ isActive }: { isActive: boolean }) =>
-  `rounded-lg px-3 py-2 text-sm font-semibold transition-colors hover:bg-brand-line/50 ${isActive ? 'text-brand-accent-ink' : 'text-brand-muted hover:text-brand-ink'}`;
+  `group relative px-4 py-2 text-[12px] font-semibold uppercase tracking-[0.16em] transition-colors after:absolute after:inset-x-4 after:-bottom-0.5 after:h-px after:origin-left after:scale-x-0 after:bg-brand-accent after:transition-transform after:duration-300 hover:after:scale-x-100 focus-visible:after:scale-x-100 ${isActive ? 'text-brand-accent-ink after:scale-x-100' : 'text-brand-ink/80 hover:text-brand-ink'}`;
 
 const Header: React.FC<HeaderProps> = ({ logo, onLogoError, onOpenCart, onOpenFAQ }) => {
   const { itemCount } = useCart();
@@ -57,23 +58,23 @@ const Header: React.FC<HeaderProps> = ({ logo, onLogoError, onOpenCart, onOpenFA
 
   return (
     <>
-    <header className="sticky top-0 z-40 border-b border-brand-line bg-brand-surface/95 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-brand-line bg-brand-surface/90 backdrop-blur-md">
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-2 focus:z-50 focus:rounded-lg focus:bg-brand-fill focus:px-4 focus:py-2 focus:text-brand-on-fill">Skip to content</a>
-      <div className="container-page flex h-16 items-center gap-3">
+      <div className="container-page flex h-16 items-center gap-3 lg:grid lg:h-[76px] lg:grid-cols-[1fr_auto_1fr] lg:gap-8">
         {/* mobile menu button */}
         <button type="button" onClick={() => setMenuOpen(true)} aria-label="Open menu" aria-haspopup="dialog" className="btn-ghost -ml-2 !px-2 lg:hidden">
-          <Menu className="h-6 w-6" aria-hidden="true" />
+          <Menu className="h-6 w-6" strokeWidth={1.5} aria-hidden="true" />
         </button>
 
-        <Link to="/" aria-label="VEDIQRA home" onClick={() => window.scrollTo(0, 0)} className="shrink-0 rounded-lg">
+        <Link to="/" aria-label="VEDIQRA home" onClick={() => window.scrollTo(0, 0)} className="shrink-0 rounded-sm lg:justify-self-start">
           <Logo src={logo} onError={onLogoError} />
         </Link>
 
         {/* desktop navigation */}
-        <nav aria-label="Main" className="ml-6 hidden items-center gap-1 lg:flex">
+        <nav aria-label="Main" className="hidden items-center lg:flex">
           <div
             ref={shopRef}
-            className="relative"
+            className="static"
             onMouseEnter={openShop}
             onMouseLeave={closeShopSoon}
             onBlur={(e) => { if (!shopRef.current?.contains(e.relatedTarget as Node | null)) setPinned(false); }}
@@ -96,37 +97,40 @@ const Header: React.FC<HeaderProps> = ({ logo, onLogoError, onOpenCart, onOpenFA
               Shop <ChevronDown className={`h-4 w-4 transition-transform ${shopOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
             </button>
             {shopOpen && (
-              <div id="shop-menu" className="absolute left-0 top-full z-50 mt-1 max-h-[calc(100vh-6rem)] w-[44rem] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-xl border border-brand-line bg-brand-elevated p-5 shadow-pop">
-                {tree.length === 0 ? (
-                  <p className="text-sm text-brand-muted">Categories will appear here.</p>
-                ) : (
-                  <ul className="grid grid-cols-3 gap-x-6 gap-y-5">
-                    {tree.map((parent) => (
-                      <li key={parent.id}>
-                        <Link to={categoryLink(parent)} className="text-sm font-bold hover:text-brand-accent-ink">{parent.name}</Link>
-                        {parent.children && parent.children.length > 0 && (
-                          <ul className="mt-1.5 space-y-1">
-                            {parent.children.map((child) => (
-                              <li key={child.id}>
-                                <Link to={categoryLink(child)} className="text-sm text-brand-muted hover:text-brand-ink">{child.name}</Link>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                <div className="mt-5 border-t border-brand-line pt-4">
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-brand-muted">Shop by budget</p>
-                  <ul className="flex flex-wrap gap-2">
-                    {BUDGET_BANDS.map((b) => (
-                      <li key={b.key}><Link to={budgetLink(b)} className="badge-neutral !px-3 !py-2 text-xs hover:bg-brand-accent-soft hover:text-brand-accent-ink">{b.label}</Link></li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="mt-4 border-t border-brand-line pt-3">
-                  <Link to="/products" className="text-sm font-semibold hover:text-brand-accent-ink">View all products →</Link>
+              <div id="shop-menu" className="absolute inset-x-0 top-full z-50 max-h-[calc(100vh-5rem)] overflow-y-auto border-b border-t border-brand-line bg-brand-surface shadow-pop">
+                <div className="container-page grid gap-x-16 gap-y-8 py-10 lg:grid-cols-[1fr_17rem]">
+                  <div>
+                    <p className="eyebrow mb-6">Collections</p>
+                    {tree.length === 0 ? (
+                      <p className="text-sm text-brand-muted">Categories will appear here.</p>
+                    ) : (
+                      <ul className="grid grid-cols-2 gap-x-10 gap-y-8 xl:grid-cols-3">
+                        {tree.map((parent) => (
+                          <li key={parent.id}>
+                            <Link to={categoryLink(parent)} className="font-display text-xl font-semibold leading-tight transition-colors hover:text-brand-accent-ink">{parent.name}</Link>
+                            {parent.children && parent.children.length > 0 && (
+                              <ul className="mt-3 space-y-1.5 border-l border-brand-line pl-4">
+                                {parent.children.map((child) => (
+                                  <li key={child.id}>
+                                    <Link to={categoryLink(child)} className="text-sm text-brand-muted transition-colors hover:text-brand-ink">{child.name}</Link>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                  <div className="border-brand-line lg:border-l lg:pl-10">
+                    <p className="eyebrow mb-6">Shop by budget</p>
+                    <ul className="space-y-1">
+                      {BUDGET_BANDS.map((b) => (
+                        <li key={b.key}><Link to={budgetLink(b)} className="group flex items-center justify-between border-b border-brand-line py-3 text-[15px] transition-colors hover:text-brand-accent-ink">{b.label}<span aria-hidden="true" className="text-brand-accent opacity-0 transition-all group-hover:translate-x-1 group-hover:opacity-100">→</span></Link></li>
+                      ))}
+                    </ul>
+                    <Link to="/products" className="mt-6 inline-block border-b border-brand-accent/60 pb-1 text-[12px] font-semibold uppercase tracking-[0.14em] hover:border-brand-accent hover:text-brand-accent-ink">View all products →</Link>
+                  </div>
                 </div>
               </div>
             )}
@@ -136,12 +140,12 @@ const Header: React.FC<HeaderProps> = ({ logo, onLogoError, onOpenCart, onOpenFA
           <NavLink to="/track-order" className={navLink}>Track Order</NavLink>
         </nav>
 
-        <div className="ml-auto flex items-center gap-2">
-          <HeaderSearch className="hidden w-60 md:block xl:w-80" />
+        <div className="ml-auto flex items-center gap-3 lg:justify-self-end">
+          <HeaderSearch className="hidden w-56 md:block xl:w-72" />
           <button type="button" onClick={onOpenCart} aria-label={`Open cart, ${itemCount} ${itemCount === 1 ? 'item' : 'items'}`} className="btn-ghost relative !px-2">
-            <ShoppingBag className="h-6 w-6" aria-hidden="true" />
+            <ShoppingBag className="h-[22px] w-[22px]" strokeWidth={1.5} aria-hidden="true" />
             {itemCount > 0 && (
-              <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-brand-accent px-1 text-[11px] font-bold text-[#111111]">{itemCount}</span>
+              <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-brand-accent px-1 text-[10px] font-bold text-[#111111]">{itemCount}</span>
             )}
           </button>
         </div>
@@ -158,7 +162,7 @@ const Header: React.FC<HeaderProps> = ({ logo, onLogoError, onOpenCart, onOpenFA
           <nav aria-label="Mobile">
             <ul className="divide-y divide-brand-line">
               <li>
-                <button type="button" aria-expanded={mobileShopOpen} onClick={() => setMobileShopOpen((o) => !o)} className="flex w-full items-center justify-between py-3.5 text-left font-semibold">
+                <button type="button" aria-expanded={mobileShopOpen} onClick={() => setMobileShopOpen((o) => !o)} className="flex w-full items-center justify-between py-4 text-left font-display text-xl font-semibold">
                   Shop <ChevronDown className={`h-4 w-4 transition-transform ${mobileShopOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
                 </button>
                 {mobileShopOpen && (
@@ -180,7 +184,7 @@ const Header: React.FC<HeaderProps> = ({ logo, onLogoError, onOpenCart, onOpenFA
                 )}
               </li>
               <li>
-                <button type="button" aria-expanded={mobileBudgetOpen} onClick={() => setMobileBudgetOpen((o) => !o)} className="flex w-full items-center justify-between py-3.5 text-left font-semibold">
+                <button type="button" aria-expanded={mobileBudgetOpen} onClick={() => setMobileBudgetOpen((o) => !o)} className="flex w-full items-center justify-between py-4 text-left font-display text-xl font-semibold">
                   Shop by budget <ChevronDown className={`h-4 w-4 transition-transform ${mobileBudgetOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
                 </button>
                 {mobileBudgetOpen && (
@@ -189,10 +193,10 @@ const Header: React.FC<HeaderProps> = ({ logo, onLogoError, onOpenCart, onOpenFA
                   </ul>
                 )}
               </li>
-              <li><Link to="/combos" className="block py-3.5 font-semibold">Combos</Link></li>
-              <li><Link to="/custom-combo" className="block py-3.5 font-semibold">Custom Combo</Link></li>
-              <li><Link to="/track-order" className="block py-3.5 font-semibold">Track Order</Link></li>
-              <li><button type="button" onClick={() => { setMenuOpen(false); onOpenFAQ(); }} className="block w-full py-3.5 text-left font-semibold">FAQ</button></li>
+              <li><Link to="/combos" className="block py-4 font-display text-xl font-semibold">Combos</Link></li>
+              <li><Link to="/custom-combo" className="block py-4 font-display text-xl font-semibold">Custom Combo</Link></li>
+              <li><Link to="/track-order" className="block py-4 font-display text-xl font-semibold">Track Order</Link></li>
+              <li><button type="button" onClick={() => { setMenuOpen(false); onOpenFAQ(); }} className="block w-full py-4 text-left font-display text-xl font-semibold">FAQ</button></li>
             </ul>
           </nav>
         </div>

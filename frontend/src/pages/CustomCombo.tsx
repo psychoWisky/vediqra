@@ -273,10 +273,10 @@ const CustomCombo: React.FC = () => {
         />
       )}
 
-      <div className="mx-auto mb-10 max-w-2xl text-center">
-        <div className="mb-3 flex items-center justify-center gap-2 text-brand-accent-ink" aria-hidden="true"><Package className="h-6 w-6" /><Sparkles className="h-6 w-6" /><Gift className="h-6 w-6" /></div>
-        <h1 className="text-3xl font-bold sm:text-4xl">Build a custom combo</h1>
-        <p className="mt-2 text-brand-muted">Choose your own products. The more you add, the bigger the discount.</p>
+      <div className="mb-12 border-b border-brand-line pb-10">
+        <p className="eyebrow mb-5">Made by you</p>
+        <h1 className="text-4xl font-semibold leading-[1.05] sm:text-5xl">Build a custom combo</h1>
+        <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-brand-muted">Choose your own products. The more you add, the bigger the discount.</p>
       </div>
 
       <div className="flex flex-col gap-8 lg:flex-row">
@@ -368,14 +368,14 @@ const CustomCombo: React.FC = () => {
           </div>
 
           <div className="card mb-6 flex flex-wrap items-center gap-2 p-4 text-sm">
-            <button type="button" onClick={() => { setSelectedCategory(null); setSelectedGender('all'); }} aria-pressed={!selectedCategory} className={`rounded-full px-4 py-2 ${!selectedCategory ? 'bg-brand-fill text-brand-on-fill' : 'bg-brand-subtle hover:bg-brand-line'}`}>All categories</button>
+            <button type="button" onClick={() => { setSelectedCategory(null); setSelectedGender('all'); }} aria-pressed={!selectedCategory} className={`rounded-sm border border-transparent px-4 py-2 ${!selectedCategory ? 'bg-brand-fill text-brand-on-fill' : 'bg-brand-subtle hover:bg-brand-line'}`}>All categories</button>
             {selectedCategory && <span className="rounded-full bg-brand-fill px-4 py-2 text-brand-on-fill">{selectedCategory.name}</span>}
             {selectedGender !== 'all' && <span className="rounded-full bg-brand-fill px-4 py-2 capitalize text-brand-on-fill">{selectedGender}</span>}
           </div>
 
           {!selectedCategory && !showSearchResults && (
             <section className="mb-8" aria-labelledby="cc-cat-h">
-              <h2 id="cc-cat-h" className="mb-4 text-xl font-bold">Choose a category</h2>
+              <h2 id="cc-cat-h" className="mb-5 font-display text-2xl font-semibold">Choose a category</h2>
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                 {categories.map((category) => {
                   const familyIds = categoryFamilyIds(category);
@@ -392,14 +392,14 @@ const CustomCombo: React.FC = () => {
             <section className="mb-8" aria-labelledby="cc-gender-h">
               <h3 id="cc-gender-h" className="mb-3 flex items-center gap-2 text-sm font-bold"><Users className="h-4 w-4 text-brand-accent-ink" aria-hidden="true" /> Filter by</h3>
               <div className="flex flex-wrap gap-2" role="group" aria-labelledby="cc-gender-h">
-                <button type="button" onClick={() => setSelectedGender('all')} aria-pressed={selectedGender === 'all'} className={`rounded-full px-4 py-2 text-sm capitalize ${selectedGender === 'all' ? 'bg-brand-fill text-brand-on-fill' : 'bg-brand-subtle hover:bg-brand-line'}`}>All</button>
-                {genders.map((g) => <button key={g.name} type="button" onClick={() => setSelectedGender(g.name)} aria-pressed={selectedGender === g.name} className={`rounded-full px-4 py-2 text-sm capitalize ${selectedGender === g.name ? 'bg-brand-fill text-brand-on-fill' : 'bg-brand-subtle hover:bg-brand-line'}`}>{(g as any).icon} {g.display_name}</button>)}
+                <button type="button" onClick={() => setSelectedGender('all')} aria-pressed={selectedGender === 'all'} className={`rounded-sm border border-transparent px-4 py-2 text-sm capitalize ${selectedGender === 'all' ? 'bg-brand-fill text-brand-on-fill' : 'bg-brand-subtle hover:bg-brand-line'}`}>All</button>
+                {genders.map((g) => <button key={g.name} type="button" onClick={() => setSelectedGender(g.name)} aria-pressed={selectedGender === g.name} className={`rounded-sm border border-transparent px-4 py-2 text-sm capitalize ${selectedGender === g.name ? 'bg-brand-fill text-brand-on-fill' : 'bg-brand-subtle hover:bg-brand-line'}`}>{(g as any).icon} {g.display_name}</button>)}
               </div>
             </section>
           )}
 
           <section aria-labelledby="cc-products-h">
-            <h2 id="cc-products-h" className="mb-4 text-xl font-bold">{showSearchResults ? 'Search results' : 'Select products'}</h2>
+            <h2 id="cc-products-h" className="mb-5 font-display text-2xl font-semibold">{showSearchResults ? 'Search results' : 'Select products'}</h2>
             {displayProducts.length === 0 ? (
               <EmptyState
                 title={showSearchResults ? 'No results found' : 'No products found'}

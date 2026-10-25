@@ -226,9 +226,9 @@ const Products: React.FC = () => {
   const atCeiling = priceRange[1] >= priceBound;
   const priceValueText = minPrice === 0 && atCeiling ? 'Any price' : priceFilterLabel(minPrice, atCeiling ? null : priceRange[1]);
   const renderFilters = (idp: string) => (
-    <div className="space-y-5">
+    <div className="space-y-8">
       <div>
-        <label htmlFor={`${idp}-price`} className="mb-2 block text-sm font-semibold">Price range</label>
+        <label htmlFor={`${idp}-price`} className="mb-3 block text-[11px] font-semibold uppercase tracking-[0.2em] text-brand-muted">Price range</label>
         <input
           id={`${idp}-price`}
           type="range" min="0"
@@ -238,7 +238,7 @@ const Products: React.FC = () => {
           onChange={(e) => setPriceMax(parseInt(e.target.value))}
           className="w-full accent-brand-accent"
         />
-        <div className="flex justify-between text-xs mt-1">
+        <div className="mt-2 flex justify-between text-[13px] text-brand-muted">
           <span>₹{priceRange[0].toLocaleString()}</span>
           <span>₹{priceRange[1].toLocaleString()}</span>
         </div>
@@ -246,7 +246,7 @@ const Products: React.FC = () => {
 
       {activeCategories.length > 0 && (
         <div>
-          <h4 className="font-semibold text-sm mb-2">Categories</h4>
+          <h4 className="mb-3 block text-[11px] font-semibold uppercase tracking-[0.2em] text-brand-muted">Categories</h4>
           <div className="space-y-1.5">
             {activeCategories.map(cat => (
               <label key={cat.id} className={`flex items-center justify-between cursor-pointer text-sm ${cat.parent_id ? 'pl-5' : ''}`}>
@@ -276,20 +276,20 @@ const Products: React.FC = () => {
 
       {genders.length > 0 && (
       <div>
-        <h4 className="font-semibold text-sm mb-2">For</h4>
+        <h4 className="mb-3 block text-[11px] font-semibold uppercase tracking-[0.2em] text-brand-muted">For</h4>
         <div className="flex flex-wrap gap-1.5">
           <button
             onClick={() => setSelectedGender('all')}
-            className={`px-3 py-1.5 rounded-full text-xs capitalize transition-colors ${
-              selectedGender === 'all' ? 'bg-brand-fill text-brand-on-fill' : 'bg-brand-subtle text-brand-ink hover:bg-brand-line'
+            className={`min-h-[36px] rounded-sm border px-3.5 py-1.5 text-[12px] capitalize transition-colors ${
+              selectedGender === 'all' ? 'border-brand-accent bg-brand-accent/15 text-brand-accent-ink' : 'border-brand-line text-brand-ink hover:border-brand-accent/60'
             }`}
           >All</button>
           {genders.map((gender) => (
             <button
               key={gender.name}
               onClick={() => setSelectedGender(gender.name)}
-              className={`px-3 py-1.5 rounded-full text-xs capitalize transition-colors flex items-center gap-1 ${
-                selectedGender === gender.name ? 'bg-brand-fill text-brand-on-fill' : 'bg-brand-subtle text-brand-ink hover:bg-brand-line'
+              className={`flex min-h-[36px] items-center gap-1 rounded-sm border px-3.5 py-1.5 text-[12px] capitalize transition-colors ${
+                selectedGender === gender.name ? 'border-brand-accent bg-brand-accent/15 text-brand-accent-ink' : 'border-brand-line text-brand-ink hover:border-brand-accent/60'
               }`}
             >
               {(gender as any).icon && <span>{(gender as any).icon}</span>}
@@ -333,8 +333,8 @@ const Products: React.FC = () => {
   const hasActiveFilters = selectedCategories.length > 0 || selectedGender !== 'all' || priceActive || Boolean(searchQuery);
 
   return (
-    <div className="container-page py-8 md:py-12">
-      <nav aria-label="Breadcrumb" className="mb-4 text-sm text-brand-muted">
+    <div className="container-page py-10 md:py-16">
+      <nav aria-label="Breadcrumb" className="mb-8 text-[12px] uppercase tracking-[0.14em] text-brand-muted">
         <ol className="flex flex-wrap items-center gap-x-2">
           <li><Link to="/" className="hover:text-brand-ink">Home</Link></li>
           <li aria-hidden="true">/</li>
@@ -350,11 +350,11 @@ const Products: React.FC = () => {
           )}
         </ol>
       </nav>
-      <div className="mb-6 flex items-end justify-between gap-4">
+      <div className="mb-10 flex items-end justify-between gap-4 border-b border-brand-line pb-8">
         <div>
-          <h1 className="text-2xl font-bold sm:text-3xl">{selectedCategories.length === 1 ? selectedCategories[0] : searchQuery ? 'Search results' : 'Shop'}</h1>
-          {activeCategory?.description && <p className="mt-2 max-w-2xl text-brand-muted">{activeCategory.description}</p>}
-          <p className="mt-1 text-sm text-brand-muted">
+          <h1 className="text-4xl font-semibold leading-[1.05] sm:text-5xl">{selectedCategories.length === 1 ? selectedCategories[0] : searchQuery ? 'Search results' : 'Shop'}</h1>
+          {activeCategory?.description && <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-brand-muted">{activeCategory.description}</p>}
+          <p className="mt-3 text-[13px] uppercase tracking-[0.14em] text-brand-muted">
             {loading ? '' : selectedCategories.length === 1 ? `${filteredProducts.length} ${filteredProducts.length === 1 ? 'product' : 'products'}` : searchQuery ? `${filteredProducts.length} ${filteredProducts.length === 1 ? 'result' : 'results'} for “${searchQuery}”` : 'Browse all products'}
           </p>
         </div>
@@ -403,8 +403,8 @@ const Products: React.FC = () => {
       <div className="flex flex-col gap-8 md:flex-row">
         {/* filters: sidebar from md up, drawer on phones */}
         <aside className="hidden w-56 shrink-0 md:block lg:w-64" aria-label="Filters">
-          <div className="card sticky top-20 p-4">
-            <h2 className="mb-4 flex items-center gap-2 text-base font-bold"><SlidersHorizontal className="h-4 w-4" aria-hidden="true" />Filters</h2>
+          <div className="sticky top-28 border-t border-brand-accent/40 pt-6">
+            <h2 className="mb-6 flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.2em]"><SlidersHorizontal className="h-4 w-4 text-brand-accent" strokeWidth={1.5} aria-hidden="true" />Filters</h2>
             {renderFilters('side')}
           </div>
         </aside>
@@ -434,7 +434,7 @@ const Products: React.FC = () => {
           </div>
 
           {loading ? (
-            <div className="grid grid-cols-2 gap-x-4 gap-y-8 lg:grid-cols-3 xl:grid-cols-4" aria-busy="true">
+            <div className="grid grid-cols-2 gap-x-5 gap-y-12 md:gap-x-7 lg:grid-cols-3 xl:grid-cols-4" aria-busy="true">
               {[...Array(8)].map((_, i) => (
                 <div key={i}><Skeleton className="aspect-[4/5] w-full" /><Skeleton className="mt-3 h-4 w-3/4" /><Skeleton className="mt-2 h-4 w-1/3" /></div>
               ))}
@@ -442,7 +442,7 @@ const Products: React.FC = () => {
           ) : failed ? (
             <ErrorState title="We could not load products" description="Please check your connection and try again." action={<button type="button" className="btn-primary" onClick={() => { productsRes.retry(); if (gendersRes.status === 'error') gendersRes.retry(); if (categoriesRes.status === 'error') categoriesRes.retry(); }}>Try again</button>} />
           ) : filteredProducts.length > 0 ? (
-            <div className="grid grid-cols-2 gap-x-4 gap-y-8 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-x-5 gap-y-12 md:gap-x-7 lg:grid-cols-3 xl:grid-cols-4">
               {filteredProducts.map((product) => <ProductCard key={product.id} product={product} />)}
             </div>
           ) : products.length === 0 ? (

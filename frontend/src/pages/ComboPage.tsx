@@ -220,7 +220,7 @@ const ComboPage: React.FC = () => {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="mb-2"><Badge tone="accent">Combo</Badge></div>
-                <h1 className="text-2xl font-bold leading-tight sm:text-3xl">{combo.name}</h1>
+                <h1 className="text-3xl font-semibold leading-[1.1] sm:text-4xl lg:text-[2.6rem]">{combo.name}</h1>
               </div>
               <button
                 type="button"
@@ -232,7 +232,7 @@ const ComboPage: React.FC = () => {
             {combo.description && <p className="mt-3 text-sm text-brand-muted">{combo.description}</p>}
 
             <p className="mt-4 flex flex-wrap items-baseline gap-3">
-              <span className="text-3xl font-extrabold">{formatCurrency(fromPaise(basePricePaise))}</span>
+              <span className="font-display text-3xl font-semibold">{formatCurrency(fromPaise(basePricePaise))}</span>
               {savingsPaise > 0 && <><span className="text-lg text-brand-muted line-through">{formatCurrency(originalPrice)}</span><Badge tone="danger">Save {formatCurrency(fromPaise(savingsPaise))}</Badge></>}
             </p>
 
@@ -246,7 +246,7 @@ const ComboPage: React.FC = () => {
                   const memberMissing = missingRequiredAll(p, choicesFor(p.id));
                   const ready = memberMissing.length === 0;
                   return (
-                    <li key={idx} className={`rounded-xl border-2 p-4 ${ready ? 'border-brand-line' : 'border-brand-accent/60 bg-brand-accent-soft/40'}`}>
+                    <li key={idx} className={`rounded-sm border p-4 ${ready ? 'border-brand-line' : 'border-brand-accent/60 bg-brand-accent-soft/40'}`}>
                       <div className="flex items-start gap-3">
                         <div className="relative shrink-0">
                           <img src={getImageUrl(image)} alt="" className="h-16 w-16 rounded-lg object-cover" onError={(e) => { e.currentTarget.src = '/placeholder.svg'; }} />
@@ -286,13 +286,13 @@ const ComboPage: React.FC = () => {
             </section>
 
             {customizableItems.length > 0 && (
-              <div className="mt-6 flex items-start gap-3 rounded-xl border border-brand-accent/50 bg-brand-accent-soft p-4">
+              <div className="mt-8 flex items-start gap-3 border-l-2 border-brand-accent bg-brand-subtle p-5">
                 <PenLine className="mt-0.5 h-4 w-4 shrink-0 text-brand-accent-ink" aria-hidden="true" />
                 <p className="text-sm"><span className="font-bold">Personalisation required.</span> You'll personalise {customizableItems.length} {customizableItems.length === 1 ? 'item' : 'items'} after choosing your options above.</p>
               </div>
             )}
 
-            <dl className="mt-6 space-y-1.5 rounded-xl border border-brand-line p-4 text-sm" data-testid="price-breakdown">
+            <dl className="mt-8 space-y-2 border-y border-brand-line py-5 text-sm" data-testid="price-breakdown">
               <div className="flex justify-between"><dt className="text-brand-muted">Combo price</dt><dd>{formatCurrency(fromPaise(basePricePaise))}</dd></div>
               {optionSurchargePaise !== 0 && <div className="flex justify-between" data-testid="combo-option-surcharge"><dt className="text-brand-muted">Selected options</dt><dd>{optionSurchargePaise > 0 ? '+' : '-'}{formatCurrency(Math.abs(fromPaise(optionSurchargePaise)))}</dd></div>}
               <div className="flex justify-between border-t border-brand-line pt-2 font-semibold">

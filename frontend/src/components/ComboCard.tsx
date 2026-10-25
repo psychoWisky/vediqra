@@ -23,7 +23,7 @@ const ComboCard: React.FC<ComboCardProps> = ({ combo }) => {
 
   return (
     <article className="group flex flex-col">
-      <Link to={href} tabIndex={-1} aria-hidden="true" className="relative block overflow-hidden rounded-xl bg-brand-subtle">
+      <Link to={href} tabIndex={-1} aria-hidden="true" className="img-frame block">
         <div className="aspect-[4/5]">
           {!imageLoaded && combo.image_url && <div className="absolute inset-0 animate-pulse bg-brand-line/50" aria-hidden="true" />}
           <img
@@ -32,22 +32,22 @@ const ComboCard: React.FC<ComboCardProps> = ({ combo }) => {
             loading="lazy"
             onLoad={() => setImageLoaded(true)}
             onError={(e) => { setImageLoaded(true); if (!e.currentTarget.src.endsWith('/placeholder.svg')) e.currentTarget.src = '/placeholder.svg'; }}
-            className="h-full w-full object-cover transition duration-500 md:group-hover:scale-105"
+            className="h-full w-full object-cover transition duration-700 ease-out md:group-hover:scale-[1.04]"
           />
         </div>
-        <div className="absolute left-2 top-2 flex flex-col items-start gap-1.5">
+        <div className="absolute left-3 top-3 flex flex-col items-start gap-1.5">
           <Badge tone="dark">Combo</Badge>
           {savingsPct > 0 && <Badge tone="danger">Save {savingsPct}%</Badge>}
         </div>
       </Link>
-      <div className="flex flex-1 flex-col pt-3">
-        <h3 className="text-sm font-semibold leading-snug">
-          <Link to={href} className="line-clamp-2 hover:text-brand-accent-ink">{combo.name}</Link>
+      <div className="flex flex-1 flex-col pt-4">
+        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-brand-muted">Combo{itemCount > 0 ? ` · ${itemCount} ${itemCount === 1 ? 'item' : 'items'}` : ''}</p>
+        <h3 className="text-[15px] font-medium leading-snug">
+          <Link to={href} className="link-line line-clamp-2 transition-colors hover:text-brand-accent-ink">{combo.name}</Link>
         </h3>
-        {itemCount > 0 && <p className="mt-1 text-xs text-brand-muted">{itemCount} {itemCount === 1 ? 'item' : 'items'}</p>}
         {finalPrice > 0 && (
-          <p className="mt-auto flex items-baseline gap-2 pt-2">
-            <span className="text-base font-bold">{formatCurrency(finalPrice)}</span>
+          <p className="mt-auto flex items-baseline gap-2.5 pt-2">
+            <span className="font-display text-[17px] font-semibold">{formatCurrency(finalPrice)}</span>
             {savings > 0 && <span className="text-xs text-brand-muted line-through">{formatCurrency(originalPrice)}</span>}
           </p>
         )}

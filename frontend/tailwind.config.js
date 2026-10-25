@@ -41,6 +41,7 @@ export default {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         serif: ['Playfair Display', 'Georgia', 'serif'], // admin panel only
         heading: ['Inter', 'system-ui', 'sans-serif'],
+        display: ['Playfair Display', 'Georgia', 'serif'],   // storefront headlines
       },
       boxShadow: {
         card: 'var(--shadow-card)',
