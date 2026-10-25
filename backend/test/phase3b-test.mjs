@@ -13,16 +13,22 @@ const TEST_DB = process.env.TEST_DB || 'vediqra';
 const results = [];
 const check = (name, ok, detail = '') => { results.push({ name, ok }); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail !== '' ? '  -> ' + String(detail).slice(0, 190) : ''}`); };
 let token;
-async function call(method, path, body, tok = token) {
+async function call(method, path, body, tok = token, extraHeaders = {}) {
   const res = await fetch(B + path, {
     method,
-    headers: { 'Content-Type': 'application/json', ...(tok ? { Authorization: `Bearer ${tok}` } : {}) },
+    headers: { 'Content-Type': 'application/json', ...(tok ? { Authorization: `Bearer ${tok}` } : {}), ...extraHeaders },
     body: body && method !== 'GET' ? JSON.stringify(body) : undefined,
   });
   let json = null; try { json = await res.json(); } catch {}
   return { status: res.status, json };
 }
 const pub = (m, p, b) => call(m, p, b, null);
+// create-order now stores the cart AND the customer server-side and needs an Idempotency-Key; verify-payment only needs the proof.
+// The fake provider must also know the payment (the server asks Razorpay what was captured).
+let keyN = 0;
+const idemKey = () => `zz3b_${Date.now()}_${++keyN}_${crypto.randomBytes(6).toString('hex')}`;
+const createOrder = (body) => call('POST', '/api/payment/create-order', body, null, { 'Idempotency-Key': idemKey() });
+const seedPayment = (orderId, paymentId, amount) => fetch(B + '/__mock/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: paymentId, order_id: orderId, amount, status: 'captured' }) });
 const A = (m, p, b) => call(m, '/api/admin' + p, b);
 const psql = (sql) => execSync(`psql -U postgres -h localhost -w -d ${TEST_DB} -At -c "${sql.replace(/"/g, '\\"')}"`, { env: { ...process.env, PATH: process.env.PATH + ';C:\\Program Files\\PostgreSQL\\17\\bin' } }).toString().trim();
 const sink = async (p, m = 'GET') => (await fetch(`http://127.0.0.1:2526${p}`, { method: m })).text();
@@ -49,11 +55,11 @@ let payN = 0;
 const place = async (items, extra = {}) => {
   const email = extra.email ?? `zz${Math.random().toString(36).slice(2, 8)}@example.com`;
   const payId = `pay_ZZ3B_${Date.now()}_${++payN}`;
-  const co = await pub('POST', '/api/payment/create-order', { items, coupon_code: extra.coupon_code, email });
+  const co = await createOrder({ items, name: 'Buyer', phone: '9876543210', address: 'a', city: 'c', state: 's', pincode: '700001', ...extra, email });
   if (co.status !== 200) return co;
+  await seedPayment(co.json.id, payId, co.json.amount);
   const sig = crypto.createHmac('sha256', SECRET).update(`${co.json.id}|${payId}`).digest('hex');
-  return pub('POST', '/api/payment/verify-payment', { razorpay_order_id: co.json.id, razorpay_payment_id: payId, razorpay_signature: sig,
-    order_data: { items, name: 'Buyer', phone: '9876543210', address: 'a', city: 'c', state: 's', pincode: '700001', ...extra, email } });
+  return pub('POST', '/api/payment/verify-payment', { razorpay_order_id: co.json.id, razorpay_payment_id: payId, razorpay_signature: sig });
 };
 const quote = (items, extra = {}) => pub('POST', '/api/orders/quote', { items, payment_method: 'online', ...extra });
 const ln = (pid, extra = {}) => ({ id: `${pid}-x`, type: 'product', quantity: 1, ...extra });
@@ -214,10 +220,10 @@ check('custom-combo order cancelled: Holo back to 4, product back', optStock(tee
 const PAY = 'ZZ3B-' + Date.now();
 async function paidOrder(items, suffix) {
   const payId = `pay_${PAY}_${suffix}`;
-  const co = await pub('POST', '/api/payment/create-order', { items, email: 'pay@example.com' });
+  const co = await createOrder({ items, name: 'Payer', email: 'pay@example.com', phone: '9876543210', address: 'a', city: 'c', state: 's', pincode: '700001' });
+  await seedPayment(co.json.id, payId, co.json.amount);
   const sig = crypto.createHmac('sha256', SECRET).update(`${co.json.id}|${payId}`).digest('hex');
-  const v = await pub('POST', '/api/payment/verify-payment', { razorpay_order_id: co.json.id, razorpay_payment_id: payId, razorpay_signature: sig,
-    order_data: { items, name: 'Payer', email: 'pay@example.com', phone: '9876543210', address: 'a', city: 'c', state: 's', pincode: '700001' } });
+  const v = await pub('POST', '/api/payment/verify-payment', { razorpay_order_id: co.json.id, razorpay_payment_id: payId, razorpay_signature: sig });
   return { payId, co, v, orderId: v.json?.order?.id };
 }
 await fetch(B + '/__mock/reset', { method: 'POST' });
@@ -259,14 +265,23 @@ for (const [suffix, label] of [['fail', 'provider outage (throws)'], ['rejected'
   const st0 = prodStock(RP.id);
   r = await refund(p.payId, { amount: 100 });
   check(`${label}: 502, nothing recorded, no success claimed`, r.status === 502 && r.json.success === false && Number(order(p.orderId).refunded_amount) === 0 && order(p.orderId).status === 'paid' && order(p.orderId).refunds.length === 0, r.json?.error);
-  r = await refund(p.payId, {});
-  check(`  ...and a retry is still allowed (not blocked by the failed attempt): still 502 with the same fake`, r.status === 502);
+  if (suffix === 'rejected') {
+    r = await refund(p.payId, {});
+    check(`  ...and a retry is still allowed (a definitive failure does not block): still 502 with the same fake`, r.status === 502);
+  } else {
+    // The outcome is UNKNOWN (the provider may have refunded). Retrying the SAME refund is allowed (same idempotency key);
+    // a DIFFERENT refund must wait, so refunds can never add up beyond what was meant.
+    r = await refund(p.payId, { amount: 100 });
+    check(`  ...and retrying the SAME refund is allowed: still 502 with the same fake`, r.status === 502);
+    r = await refund(p.payId, {});
+    check(`  ...but a DIFFERENT refund is held back (409) until the uncertain one is resolved`, r.status === 409);
+  }
   if (suffix === 'fail') check('  ...stock untouched by failed refunds', prodStock(RP.id) === st0);
 }
 { // provider accepts but it is still settling
   const p = await paidOrder([rp(1)], 'pending');
   r = await refund(p.payId, { amount: 300 });
-  check('provider status "pending" is recorded as pending and counted', r.status === 200 && r.json.refund.status === 'pending' && r.json.refunded_amount === 300 && r.json.order_status === 'partially_refunded');
+  check('provider status "pending" is reported as pending (202) and recorded as pending, but NOT counted as refunded: refunded_amount 0, order stays paid', r.status === 202 && r.json.pending === true && r.json.refund.status === 'pending' && r.json.refunded_amount === 0 && r.json.order_status === 'paid' && order(p.orderId).refunds[0].status === 'pending' && Number(order(p.orderId).refunded_amount) === 0);
 }
 { // two simultaneous FULL refunds: one provider call, one success
   const p = await paidOrder([rp(1)], 'slow');

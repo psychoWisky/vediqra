@@ -49,6 +49,9 @@ const Checkout: React.FC = () => {
   const [progress, setProgress] = useState('');
   const [orderError, setOrderError] = useState('');
   const errorRef = useRef<HTMLDivElement>(null);
+  // One Idempotency-Key per checkout attempt: repeating the same cart/customer/coupon (a retry after a timeout, a double
+  // click) reuses it so the server returns the SAME payment instead of starting another; changing anything gets a new key.
+  const attemptRef = useRef<{ fingerprint: string; key: string } | null>(null);
 
   // coupon
   const [couponInput, setCouponInput] = useState('');
@@ -143,6 +146,45 @@ const Checkout: React.FC = () => {
     special_requests: form.special_requests || '',
   });
 
+  const keyFor = (fingerprint: string): string => {
+    if (!attemptRef.current || attemptRef.current.fingerprint !== fingerprint) {
+      const bytes = new Uint8Array(16);
+      crypto.getRandomValues(bytes);
+      attemptRef.current = { fingerprint, key: `co_${Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')}` };
+    }
+    return attemptRef.current.key;
+  };
+
+  // A payment that was taken but not yet confirmed is remembered (order id + status token only: no personal data, never put
+  // in a URL) so a refresh or a closed tab can pick the status check up again. Cleared as soon as the outcome is final.
+  const PENDING_KEY = 'vq_pending_payment';
+  const rememberPending = (razorpayOrderId: string, token: string) => { try { localStorage.setItem(PENDING_KEY, JSON.stringify({ o: razorpayOrderId, t: token, at: Date.now() })); } catch { /* storage unavailable */ } };
+  const forgetPending = () => { try { localStorage.removeItem(PENDING_KEY); } catch { /* ignore */ } };
+
+  /** Payment is taken but the order is still being confirmed in the background: ask the server for a short while. */
+  const awaitConfirmation = async (razorpayOrderId: string, token: string, rounds = 10): Promise<boolean> => {
+    for (let i = 0; i < rounds; i++) {
+      await new Promise((r) => setTimeout(r, 3000));
+      try {
+        const s = await apiFetch('/api/payment/status', { method: 'POST', body: JSON.stringify({ razorpay_order_id: razorpayOrderId, token }) });
+        if (s.state === 'confirmed' && s.order_id) { forgetPending(); clearCart(); navigate(`/order-confirmation?orderId=${s.order_id}`); return true; }
+        if (s.state === 'refund_pending' || s.state === 'refunded' || s.state === 'under_review') { forgetPending(); fail(s.message); return true; }
+      } catch (e) {
+        if ((e as any)?.status === 404) { forgetPending(); return false; }       // unknown checkout / token: stop remembering it
+      }
+    }
+    return false;
+  };
+
+  useEffect(() => {
+    let saved: { o: string; t: string; at: number } | null = null;
+    try { saved = JSON.parse(localStorage.getItem(PENDING_KEY) || 'null'); } catch { saved = null; }
+    if (!saved || typeof saved.o !== 'string' || typeof saved.t !== 'string' || Date.now() - (saved.at || 0) > 24 * 3600_000) { forgetPending(); return; }
+    setProgress('Checking your earlier payment…');
+    void awaitConfirmation(saved.o, saved.t, 20).then((done) => { if (!done) setProgress(''); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const loadRazorpay = () => new Promise<boolean>((resolve) => {
     if (window.Razorpay) return resolve(true);
     const s = document.createElement('script');
@@ -157,7 +199,11 @@ const Checkout: React.FC = () => {
     try {
       if (!(await loadRazorpay())) return fail('The online payment service could not be loaded. Please check your connection and try again.');
       const p = payload();
-      const created = await apiFetch('/api/payment/create-order', { method: 'POST', body: JSON.stringify({ items: p.items, coupon_code: p.coupon_code, email: form.email }) });
+      const created = await apiFetch('/api/payment/create-order', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': keyFor(JSON.stringify(p)) },
+        body: JSON.stringify(p),
+      });
       const rzp = new window.Razorpay({
         key: created.key_id || CONFIG.RAZORPAY_KEY_ID,
         amount: created.amount, currency: created.currency, order_id: created.id,
@@ -165,12 +211,20 @@ const Checkout: React.FC = () => {
         handler: async (res: any) => {
           setProgress('Confirming your payment…');
           try {
+            // The server already holds the cart and customer details (stored when the payment was created); only the payment
+            // proof is sent now.
             const verified = await apiFetch('/api/payment/verify-payment', {
               method: 'POST',
-              body: JSON.stringify({ razorpay_order_id: res.razorpay_order_id, razorpay_payment_id: res.razorpay_payment_id, razorpay_signature: res.razorpay_signature, order_data: { ...p, payment_method: 'online' } }),
+              body: JSON.stringify({ razorpay_order_id: res.razorpay_order_id, razorpay_payment_id: res.razorpay_payment_id, razorpay_signature: res.razorpay_signature }),
             });
             const id = orderId(verified);
-            if (verified.success && id) { clearCart(); navigate(`/order-confirmation?orderId=${id}`); }
+            if (verified.success && id) { attemptRef.current = null; forgetPending(); clearCart(); navigate(`/order-confirmation?orderId=${id}`); }
+            else if (verified.pending) {
+              rememberPending(created.id, created.status_token);
+              if (!(await awaitConfirmation(created.id, created.status_token))) {
+                fail(verified.message || 'Your payment was received and we are confirming your order. You will get an email shortly; please do not pay again.');
+              }
+            }
             else fail('We could not confirm your payment. Please contact us before trying again so you are not charged twice.');
           } catch (e) {
             fail(friendlyError(e, 'We could not confirm your payment. Please contact us before trying again so you are not charged twice.'));
@@ -183,6 +237,8 @@ const Checkout: React.FC = () => {
       rzp.on?.('payment.failed', () => fail('Your payment did not go through. Please try again.'));
       rzp.open();
     } catch (e) {
+      // This attempt's key belongs to a checkout that has ended: the next try must start a fresh one.
+      if ((e as any)?.status === 409) attemptRef.current = null;
       fail(friendlyError(e, 'We could not start the payment. Please try again.'));
     }
   };

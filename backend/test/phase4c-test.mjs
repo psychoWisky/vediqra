@@ -12,10 +12,10 @@ const TEST_DB = process.env.TEST_DB || 'vediqra';
 const results = [];
 const check = (name, ok, detail = '') => { results.push({ name, ok }); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail !== '' ? '  -> ' + String(detail).slice(0, 190) : ''}`); };
 let token;
-async function call(method, path, body, tok = token) {
+async function call(method, path, body, tok = token, extraHeaders = {}) {
   const res = await fetch(B + path, {
     method,
-    headers: { 'Content-Type': 'application/json', ...(tok ? { Authorization: `Bearer ${tok}` } : {}) },
+    headers: { 'Content-Type': 'application/json', ...(tok ? { Authorization: `Bearer ${tok}` } : {}), ...extraHeaders },
     body: body && method !== 'GET' ? JSON.stringify(body) : undefined,
   });
   let json = null; try { json = await res.json(); } catch {}
@@ -63,10 +63,11 @@ check('quote: asking for payment_method cod is priced as online: no cod_charge /
 const buyer = { name: 'ZZ4C Buyer', email: 'zz4c@example.com', phone: '9876500001', address: 'a', city: 'c', state: 's', pincode: '700001' };
 // the only way to place an order: Razorpay create-order, then verify-payment with a valid signature (the fake is deterministic)
 const items0 = [line(cheap.json.product.id)];
-const co = await pub('POST', '/api/payment/create-order', { items: items0, email: buyer.email });
+const co = await call('POST', '/api/payment/create-order', { items: items0, ...buyer }, null, { 'Idempotency-Key': `zz4c_${Date.now()}_${crypto.randomBytes(6).toString('hex')}` });
 const payId = 'pay_ZZ4C_' + Date.now();
+await fetch(B + '/__mock/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: payId, order_id: co.json.id, amount: co.json.amount, status: 'captured' }) });
 const sig = crypto.createHmac('sha256', SECRET).update(`${co.json.id}|${payId}`).digest('hex');
-r = await pub('POST', '/api/payment/verify-payment', { razorpay_order_id: co.json.id, razorpay_payment_id: payId, razorpay_signature: sig, order_data: { items: items0, ...buyer } });
+r = await pub('POST', '/api/payment/verify-payment', { razorpay_order_id: co.json.id, razorpay_payment_id: payId, razorpay_signature: sig });
 check('order placed', r.status === 200, JSON.stringify(r.json));
 const orderId = r.json.order.id;
 const customOrderId = r.json.order.custom_order_id;

@@ -76,7 +76,11 @@ Copy `backend/.env.example` to `.env` and fill in real values. Key points:
   the incoming request automatically, which is correct for same-host nginx proxying.
 - `CORS_ORIGINS` must list the real storefront origin(s) in production — an empty value reflects any
   origin, which is fine for local dev only.
-- `TRUST_PROXY=1` if there is exactly one reverse proxy (nginx) in front of the app.
+- `TRUST_PROXY=loopback` when nginx runs on the same host as the app (see section 8, "nginx example", for the matching
+  headers), and `LISTEN_HOST=127.0.0.1` so only nginx can reach the app. `TRUST_PROXY` also accepts `0` (default, trust
+  nobody), a hop count `1`-`3`, or a list of proxy IPs/CIDRs; `true` is refused. It decides which client IP every rate limiter
+  sees: with the wrong value either all visitors share one limit bucket (nginx not trusted) or a visitor can invent an IP
+  (everything trusted).
 
 ```bash
 cd backend
@@ -211,11 +215,23 @@ sudo cp -r dist/* /usr/share/nginx/html/
 ```nginx
 location /api/ {
     proxy_pass http://127.0.0.1:5000;
+    # The real client address. `$remote_addr` OVERWRITES anything the client sent in X-Forwarded-For, so it cannot be forged.
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Real-IP       $remote_addr;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Host $host;
+    # Razorpay webhook signatures cover the exact body bytes: do not buffer-modify or re-encode it (nginx's default is fine).
+    client_max_body_size 5m;
 }
 location /uploads/ {
     proxy_pass http://127.0.0.1:5000;
 }
 ```
+
+Matching backend settings: `TRUST_PROXY=loopback` and `LISTEN_HOST=127.0.0.1` (and firewall port 5000 as well). With a LOAD
+BALANCER in front of nginx, make nginx recover the client address from the balancer with the realip module
+(`set_real_ip_from <balancer address or CIDR>; real_ip_header X-Forwarded-For;`) so `$remote_addr` is the real client, and keep the
+settings above; do not widen `TRUST_PROXY` to cover the balancer. Never use a setting that trusts forwarded headers from arbitrary callers.
 
 ## 9. Health checks and smoke tests
 

@@ -53,7 +53,7 @@ export function cleanCustomer(input: CustomerInput | undefined): CleanCustomer {
 export interface RazorpayPayment {
   order_id: string;
   payment_id: string;
-  signature: string;
+  signature?: string | null;
 }
 
 /**
@@ -128,87 +128,14 @@ export async function createOrder(params: {
   paymentMethod: 'online';
   payment: RazorpayPayment;
 }): Promise<any> {
-  const { quote, customer, paymentMethod, payment } = params;
+  const { paymentMethod, payment } = params;
   if ((paymentMethod as string) !== 'online') throw new PricingError('Only online payment is supported.', 400);
   if (!payment?.payment_id || !payment?.order_id) throw new PricingError('A verified online payment is required to place an order.', 400);
   const client = await pool.connect();
 
   try {
     await client.query('BEGIN');
-
-    if (quote.coupon) {
-      const locked = await client.query(
-        'SELECT usage_limit, used_count, per_user_limit FROM coupons WHERE id = $1 FOR UPDATE',
-        [quote.coupon.id]
-      );
-      const c = locked.rows[0];
-      if (!c) throw new PricingError('Coupon is no longer available');
-      if (c.usage_limit && c.used_count >= c.usage_limit) throw new PricingError('Coupon usage limit exceeded');
-      if (c.per_user_limit) {
-        const used = await client.query(
-          'SELECT COUNT(*) FROM coupon_usage WHERE coupon_id = $1 AND customer_email = $2',
-          [quote.coupon.id, customer.email]
-        );
-        if (parseInt(used.rows[0].count) >= c.per_user_limit) {
-          throw new PricingError('You have already used this coupon the maximum number of times');
-        }
-      }
-    }
-
-    const movements = await decrementStock(client, quote.stock);
-
-    const seq = await client.query("SELECT nextval('order_number_seq') AS n");
-    const customOrderId = `${config.orderIdPrefix}#${seq.rows[0].n}`;
-
-    const inserted = await client.query(
-      `INSERT INTO orders
-         (custom_order_id, razorpay_order_id, razorpay_payment_id, razorpay_signature,
-          items, subtotal, shipping_charge, cod_charge, coupon_code, coupon_discount, total_amount,
-          customer_name, customer_email, customer_phone, special_requests,
-          shipping_address, shipping_city, shipping_state, shipping_pincode, shipping_country,
-          payment_method, status, paid_at, stock_movements)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,'India',$20,$21,$22,$23)
-       RETURNING *`,
-      [
-        customOrderId,
-        payment.order_id,
-        payment.payment_id,
-        payment.signature ?? null,
-        JSON.stringify(quote.items),
-        quote.subtotal,
-        quote.shipping_charge,
-        0, // cod_charge: no cash on delivery any more; the column stays so old orders keep their stored fee
-        quote.coupon?.code ?? null,
-        quote.coupon_discount,
-        quote.total_amount,
-        customer.name,
-        customer.email,
-        customer.phone,
-        customer.special_requests,
-        customer.address,
-        customer.city,
-        customer.state,
-        customer.pincode,
-        paymentMethod,
-        'paid',
-        new Date().toISOString(),
-        JSON.stringify(movements),
-      ]
-    );
-    const order = inserted.rows[0];
-
-    if (quote.coupon) {
-      await client.query(
-        `INSERT INTO coupon_usage (coupon_id, order_id, customer_email, discount_amount, used_at)
-         VALUES ($1,$2,$3,$4, now())`,
-        [quote.coupon.id, order.id, customer.email, quote.coupon_discount]
-      );
-      await client.query(
-        'UPDATE coupons SET used_count = used_count + 1, updated_at = now() WHERE id = $1',
-        [quote.coupon.id]
-      );
-    }
-
+    const { order } = await createOrderInTx(client, params);
     await client.query('COMMIT');
     return order;
   } catch (error: any) {
@@ -222,6 +149,110 @@ export async function createOrder(params: {
   } finally {
     client.release();
   }
+}
+
+/**
+ * The order-writing steps of createOrder, run inside the CALLER's transaction (which owns BEGIN/COMMIT/ROLLBACK), so
+ * payment recovery can save the order, update the payment intent and queue its notifications atomically.
+ *
+ * `couponPolicy`:
+ *  - 'enforce' (default, the storefront rule): an exhausted coupon is refused (PricingError).
+ *  - 'honour': the customer has ALREADY PAID the discounted price, so the order is saved at that price even if the
+ *    coupon's limit was reached in the meantime. The usage is still recorded; `couponOverLimit` reports the overshoot
+ *    so the caller can raise an operational alert.
+ */
+export async function createOrderInTx(
+  client: Db,
+  params: { quote: CartQuote; customer: CleanCustomer; paymentMethod: 'online'; payment: RazorpayPayment },
+  options: { couponPolicy?: 'enforce' | 'honour' } = {},
+): Promise<{ order: any; couponOverLimit: boolean }> {
+  const { quote, customer, paymentMethod, payment } = params;
+  const honour = options.couponPolicy === 'honour';
+  let couponOverLimit = false;
+  let couponExists = true;
+
+  if (quote.coupon) {
+    const locked = await client.query(
+      'SELECT usage_limit, used_count, per_user_limit FROM coupons WHERE id = $1 FOR UPDATE',
+      [quote.coupon.id]
+    );
+    const c = locked.rows[0];
+    if (!c) {
+      if (!honour) throw new PricingError('Coupon is no longer available');
+      couponOverLimit = true;
+      couponExists = false;       // deleted since checkout: the order keeps the paid price, there is no usage row to record
+    } else {
+      if (c.usage_limit && c.used_count >= c.usage_limit) {
+        if (!honour) throw new PricingError('Coupon usage limit exceeded');
+        couponOverLimit = true;
+      }
+      if (c.per_user_limit) {
+        const used = await client.query(
+          'SELECT COUNT(*) FROM coupon_usage WHERE coupon_id = $1 AND customer_email = $2',
+          [quote.coupon.id, customer.email]
+        );
+        if (parseInt(used.rows[0].count) >= c.per_user_limit) {
+          if (!honour) throw new PricingError('You have already used this coupon the maximum number of times');
+          couponOverLimit = true;
+        }
+      }
+    }
+  }
+
+  const movements = await decrementStock(client, quote.stock);
+
+  const seq = await client.query("SELECT nextval('order_number_seq') AS n");
+  const customOrderId = `${config.orderIdPrefix}#${seq.rows[0].n}`;
+
+  const inserted = await client.query(
+    `INSERT INTO orders
+       (custom_order_id, razorpay_order_id, razorpay_payment_id, razorpay_signature,
+        items, subtotal, shipping_charge, cod_charge, coupon_code, coupon_discount, total_amount,
+        customer_name, customer_email, customer_phone, special_requests,
+        shipping_address, shipping_city, shipping_state, shipping_pincode, shipping_country,
+        payment_method, status, paid_at, stock_movements)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,'India',$20,$21,$22,$23)
+     RETURNING *`,
+    [
+      customOrderId,
+      payment.order_id,
+      payment.payment_id,
+      payment.signature ?? null,
+      JSON.stringify(quote.items),
+      quote.subtotal,
+      quote.shipping_charge,
+      0, // cod_charge: no cash on delivery any more; the column stays so old orders keep their stored fee
+      quote.coupon?.code ?? null,
+      quote.coupon_discount,
+      quote.total_amount,
+      customer.name,
+      customer.email,
+      customer.phone,
+      customer.special_requests,
+      customer.address,
+      customer.city,
+      customer.state,
+      customer.pincode,
+      paymentMethod,
+      'paid',
+      new Date().toISOString(),
+      JSON.stringify(movements),
+    ]
+  );
+  const order = inserted.rows[0];
+
+  if (quote.coupon && couponExists) {
+    await client.query(
+      `INSERT INTO coupon_usage (coupon_id, order_id, customer_email, discount_amount, used_at)
+       VALUES ($1,$2,$3,$4, now())`,
+      [quote.coupon.id, order.id, customer.email, quote.coupon_discount]
+    );
+    await client.query(
+      'UPDATE coupons SET used_count = used_count + 1, updated_at = now() WHERE id = $1',
+      [quote.coupon.id]
+    );
+  }
+  return { order, couponOverLimit };
 }
 
 /** Reasons a product must not be deleted. Empty array = safe to delete. */

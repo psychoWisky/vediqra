@@ -495,7 +495,7 @@ function priceCustomCombo(raw: any, catalog: Catalog) {
  * conditional UPDATE in orderService.createOrder, which runs in the order transaction.
  * Stock rules: option value stock_quantity NULL = not tracked; products only count when track_stock = true.
  */
-function collectStock(items: any[], catalog: Catalog): StockDemand {
+function collectStock(items: any[], catalog: Catalog, checkAvailability = true): StockDemand {
   const products = new Map<string, { name: string; qty: number }>();
   const values = new Map<string, { label: string; qty: number }>();
 
@@ -525,6 +525,12 @@ function collectStock(items: any[], catalog: Catalog): StockDemand {
   for (const groups of catalog.groups.values()) for (const g of groups) for (const v of g.values) stockOf.set(v.id, v.stock_quantity);
 
   const left = (n: number) => (n <= 0 ? 'is sold out' : `only ${n} left`);
+  if (!checkAvailability) {
+    return {
+      products: [...products].map(([id, d]) => ({ id, name: d.name, qty: d.qty })),
+      values: [...values].map(([id, d]) => ({ id, label: d.label, qty: d.qty })),
+    };
+  }
   for (const [id, d] of products) {
     const stock = Number(catalog.products.get(id)?.stock_quantity) || 0;
     if (stock < d.qty) throw new StockError(`"${d.name}" ${left(stock)}.`);
@@ -618,7 +624,12 @@ export async function evaluateCoupon(
 export async function priceCart(
   db: Queryable,
   rawItems: unknown,
-  opts: { couponCode?: string | null; email?: string; paymentMethod: PaymentMethod }
+  opts: {
+    couponCode?: string | null; email?: string; paymentMethod: PaymentMethod;
+    /** Skip the soft "is it in stock right now" check. ONLY for re-pricing a cart that has already been paid for (the
+     *  atomic stock decrement at fulfilment is still the real check, and a failure there becomes a refund). */
+    skipStockCheck?: boolean;
+  }
 ): Promise<CartQuote> {
   // Defence in depth: the type already says 'online', but a caller that builds this from request data must not be
   // able to smuggle another method in.
@@ -685,7 +696,7 @@ export async function priceCart(
   const shipping_charge = subtotal >= config.freeShippingThreshold ? 0 : config.shippingFee;
   const total_amount = Math.max(round2(subtotal + shipping_charge - coupon_discount), 0);
 
-  const stock = collectStock(items, catalog);
+  const stock = collectStock(items, catalog, !opts.skipStockCheck);
 
   return {
     items, stock, subtotal, coupon, coupon_discount, shipping_charge, total_amount,

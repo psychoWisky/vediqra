@@ -16,16 +16,20 @@ if (!TEST_DB || TEST_DB === 'vediqra') { console.error('Set TEST_DB to a disposa
 const results = [];
 const check = (name, ok, detail = '') => { results.push({ name, ok }); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail !== '' ? '  -> ' + String(detail).slice(0, 200) : ''}`); };
 let token;
-async function call(method, p, body, tok = token) {
+async function call(method, p, body, tok = token, extraHeaders = {}) {
   const res = await fetch(B + p, {
     method,
-    headers: { 'Content-Type': 'application/json', ...(tok ? { Authorization: `Bearer ${tok}` } : {}) },
+    headers: { 'Content-Type': 'application/json', ...(tok ? { Authorization: `Bearer ${tok}` } : {}), ...extraHeaders },
     body: body && method !== 'GET' ? JSON.stringify(body) : undefined,
   });
   let json = null; try { json = await res.json(); } catch {}
   return { status: res.status, json };
 }
 const pub = (m, p, b) => call(m, p, b, null);
+// create-order stores cart + customer server-side and needs an Idempotency-Key; the fake provider must know the payment.
+let keyN = 0;
+const createOrder = (body) => call('POST', '/api/payment/create-order', body, null, { 'Idempotency-Key': `zz4f_${Date.now()}_${++keyN}_${crypto.randomBytes(6).toString('hex')}` });
+const seedPayment = (orderId, paymentId, amount) => fetch(B + '/__mock/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: paymentId, order_id: orderId, amount, status: 'captured' }) });
 const A = (m, p, b) => call(m, '/api/admin' + p, b);
 const psql = (sql) => execSync(`psql -U postgres -h localhost -w -d ${TEST_DB} -At -c "${sql.replace(/"/g, '\\"')}"`, { env: { ...process.env, PATH: process.env.PATH + ';C:\\Program Files\\PostgreSQL\\17\\bin' } }).toString().trim();
 const orderCount = () => Number(psql('select count(*) from orders'));
@@ -75,12 +79,13 @@ check('quote without payment_method: same total', r.json.total_amount === expect
 // ============================================================================================ 3. online flow
 await fetch(B + '/__mock/reset', { method: 'POST' });
 const items = [line(tracked.id, { quantity: 1 })];                                  // 1000, free shipping
-const co = await pub('POST', '/api/payment/create-order', { items, email: buyer.email, payment_method: 'cod' });
+const co = await createOrder({ items, ...buyer, payment_method: 'cod' });
 check('create-order ignores a crafted payment_method and charges the server-priced online total (100000 paise)', co.status === 200 && co.json.amount === 100000, JSON.stringify(co.json));
 const payId = 'pay_ZZ4F_ok';
 const sig = sign(co.json.id, payId);
+await seedPayment(co.json.id, payId, co.json.amount);
 before = orderCount();
-r = await pub('POST', '/api/payment/verify-payment', { razorpay_order_id: co.json.id, razorpay_payment_id: payId, razorpay_signature: sig, order_data: { items, ...buyer, payment_method: 'cod', cod_charge: 49, total_amount: 1 } });
+r = await pub('POST', '/api/payment/verify-payment', { razorpay_order_id: co.json.id, razorpay_payment_id: payId, razorpay_signature: sig, order_data: { items, ...buyer, payment_method: 'cod', cod_charge: 49, total_amount: 1 } });   // crafted fields: ignored
 const okOrderId = r.json?.order?.id;
 check('valid payment verifies (200) and creates exactly one order', r.status === 200 && r.json.success && orderCount() === before + 1, JSON.stringify(r.json));
 const row = psql(`select payment_method||'|'||status||'|'||(paid_at is not null)||'|'||cod_charge||'|'||total_amount||'|'||razorpay_payment_id from orders where id='${okOrderId}'`);
@@ -91,16 +96,17 @@ check('replaying the same verified payment returns the same order, no second ord
 
 // ============================================================================================ 4. failed / forged verification
 before = orderCount();
-const co2 = await pub('POST', '/api/payment/create-order', { items, email: buyer.email });
+const co2 = await createOrder({ items, ...buyer });
 r = await pub('POST', '/api/payment/verify-payment', { razorpay_order_id: co2.json.id, razorpay_payment_id: 'pay_ZZ4F_forged', razorpay_signature: 'deadbeef'.repeat(8), order_data: { items, ...buyer } });
 check('tampered signature -> 400, no order', r.status === 400 && orderCount() === before, JSON.stringify(r.json));
 r = await pub('POST', '/api/payment/verify-payment', { razorpay_order_id: co2.json.id, razorpay_payment_id: 'pay_ZZ4F_other', razorpay_signature: sign(co2.json.id, 'pay_ZZ4F_ok'), order_data: { items, ...buyer } });
 check('a valid signature for a DIFFERENT payment id is rejected -> 400, no order', r.status === 400 && orderCount() === before);
 r = await pub('POST', '/api/payment/verify-payment', { razorpay_order_id: co2.json.id, razorpay_payment_id: 'pay_ZZ4F_x' });
 check('missing signature fields -> 400, no order', r.status === 400 && orderCount() === before);
-const bigItems = [line(tracked.id, { quantity: 2 })];                              // total 2000, but the Razorpay order below is for 1000
-r = await pub('POST', '/api/payment/verify-payment', { razorpay_order_id: co2.json.id, razorpay_payment_id: 'pay_ZZ4F_amt', razorpay_signature: sign(co2.json.id, 'pay_ZZ4F_amt'), order_data: { items: bigItems, ...buyer } });
-check('paid amount differs from the server-priced cart -> 409, no order', r.status === 409 && orderCount() === before, JSON.stringify(r.json));
+// The provider says 2000 was captured for a checkout the server priced at 1000: the amount differs from the stored snapshot.
+await seedPayment(co2.json.id, 'pay_ZZ4F_amt', 200000);
+r = await pub('POST', '/api/payment/verify-payment', { razorpay_order_id: co2.json.id, razorpay_payment_id: 'pay_ZZ4F_amt', razorpay_signature: sign(co2.json.id, 'pay_ZZ4F_amt') });
+check('paid amount differs from the server-priced checkout -> 409 (held for review), no order', r.status === 409 && orderCount() === before, JSON.stringify(r.json));
 check('  ...and stock is unchanged by every failed verification (still 7)', psql(`select stock_quantity from products where id='${tracked.id}'`) === '7');
 const unconfigured = await pub('POST', '/api/payment/verify-payment', { razorpay_order_id: 'order_x', razorpay_payment_id: 'pay_x', razorpay_signature: sign('order_x', 'pay_x') + 'x', order_data: { items, ...buyer } });
 check('there is no way to get a paid order without a matching signature (garbage signature -> 400)', unconfigured.status === 400);

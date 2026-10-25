@@ -18,6 +18,7 @@ import settingsRoutes from './routes/settings';
 import comboRoutes from './routes/combos';
 import orderRoutes from './routes/orders';
 import paymentRoutes from './routes/payment';
+import paymentWebhookRoutes from './routes/paymentWebhook';
 import couponRoutes from './routes/coupons';
 import reviewRoutes from './routes/reviews';
 import uploadRoutes from './routes/upload';
@@ -36,7 +37,7 @@ assertSecureConfig();
 const app = express();
 
 // Behind nginx/a load balancer, trust the proxy so rate limiting sees the real client IP.
-if (config.trustProxy > 0) app.set('trust proxy', config.trustProxy);
+if (config.trustProxy) app.set('trust proxy', config.trustProxy);   // hop count, `loopback` or an explicit list; see config.ts
 
 // Security headers. The API is called cross-origin by the storefront, so allow cross-origin resource loads.
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
@@ -49,10 +50,14 @@ app.use(cors({
   origin: config.corsOrigins.length > 0 ? config.corsOrigins : true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key'],
 }));
 
 app.options('*', cors());
+
+// Razorpay webhook: the signature covers the RAW bytes, so this route must be mounted before express.json() parses (and
+// re-serialises) the body. It has its own raw-body parser.
+app.use('/api/payment/webhook', paymentWebhookRoutes);
 
 // JSON bodies are small (files go through multipart upload routes, which have their own limits).
 app.use(express.json({ limit: '5mb' }));

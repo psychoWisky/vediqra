@@ -27,6 +27,20 @@ const name = process.env.DB_NAME;
 const isProduction = (process.env.NODE_ENV || 'development') === 'production';
 const ssl = process.env.DB_SSL !== undefined ? process.env.DB_SSL === 'true' : isProduction;
 
+// Opt-in test-mode guard (see src/config.ts): with PAYMENT_TEST_MODE_GUARD=true, refuse to touch any database that is not a
+// disposable test one. Checked BEFORE a connection string is built or any connection is attempted.
+{
+  const flag = (process.env.PAYMENT_TEST_MODE_GUARD || '').trim();
+  if (flag !== '' && flag !== 'false') {
+    const allowed = (process.env.TEST_MODE_ALLOWED_DB_NAMES || '').split(',').map((x) => x.trim()).filter(Boolean);
+    const ok = flag === 'true' && !!name && name !== 'vediqra' && (/^vediqra_test_[a-z0-9_]+$/.test(name) || allowed.includes(name));
+    if (!ok) {
+      console.error('migrate: refused by PAYMENT_TEST_MODE_GUARD (the value must be exactly true/false, and DB_NAME must be a vediqra_test_* or explicitly allowed test database, never "vediqra").');
+      process.exit(1);
+    }
+  }
+}
+
 if (!host || !user || !name) {
   console.error('migrate: DB_HOST, DB_USER and DB_NAME must be set (copy backend/.env.example to .env).');
   process.exit(1);

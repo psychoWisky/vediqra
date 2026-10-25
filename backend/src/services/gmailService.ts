@@ -34,6 +34,17 @@ interface EmailResult {
   error?: string;
 }
 
+
+/**
+ * What may be logged about a mail failure: error code and SMTP response code only. Nodemailer errors carry the recipient
+ * addresses (`rejected`, `envelope`), the server's response text and sometimes the command with credentials context,
+ * so the error OBJECT is never printed.
+ */
+const safeMailError = (e: unknown): string => {
+  const err = e as { code?: string; responseCode?: number; command?: string };
+  return [err?.code, err?.responseCode, err?.command].filter((x) => x !== undefined && x !== '').join(' ') || 'mail error';
+};
+
 // Create transporter with Hostinger SMTP settings
 // Host/port/TLS are configurable (EMAIL_HOST, EMAIL_PORT, EMAIL_SECURE); the defaults are the previous Hostinger settings.
 export const transporter = nodemailer.createTransport({
@@ -56,7 +67,7 @@ export const transporter = nodemailer.createTransport({
 if (config.emailUser && config.emailPassword) {
   transporter.verify((error: Error | null, success?: boolean) => {
     if (error) {
-      console.error('❌ SMTP connection error:', error);
+      console.error('❌ SMTP connection error:', safeMailError(error));
     } else {
       console.log('✅ SMTP server is ready to send emails');
     }
@@ -149,7 +160,7 @@ const createItemsTable = (items: any[]): string => {
 // ===========================================
 export const sendOrderConfirmationEmail = async (orderData: OrderData): Promise<EmailResult> => {
   try {
-    console.log('📧 Sending order confirmation email to:', orderData.customer_email);
+    console.log('📧 Sending order confirmation email for order', orderData.custom_order_id || orderData.id);   // no address in the log
 
     const html = `
       <!DOCTYPE html>
@@ -335,7 +346,7 @@ export const sendOrderConfirmationEmail = async (orderData: OrderData): Promise<
     return { success: true, messageId: info.messageId };
   } catch (error) {
     const err = error as Error;
-    console.error('❌ Failed to send email:', err);
+    console.error('❌ Failed to send email:', safeMailError(err));
     return { success: false, error: err.message };
   }
 };
@@ -487,7 +498,7 @@ export const sendAdminNotification = async (orderData: OrderData): Promise<Email
     return { success: true, messageId: info.messageId };
   } catch (error) {
     const err = error as Error;
-    console.error('❌ Failed to send admin notification:', err);
+    console.error('❌ Failed to send admin notification:', safeMailError(err));
     return { success: false, error: err.message };
   }
 };
@@ -655,7 +666,60 @@ export const sendOrderStatusUpdateEmail = async (data: StatusUpdateData): Promis
     return { success: true, messageId: info.messageId };
   } catch (error) {
     const err = error as Error;
-    console.error('❌ Failed to send status update email:', err);
+    console.error('❌ Failed to send status update email:', safeMailError(err));
     return { success: false, error: err.message };
+  }
+};
+// ===========================================
+// PAYMENT RECOVERY NOTICES (sent from the notification outbox)
+// ===========================================
+const escapeHtml = (v: unknown): string =>
+  String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/** Tells a customer that a payment they made could not be turned into an order and is being refunded. */
+export const sendPaymentRefundNoticeEmail = async (data: {
+  to: string; customer_name: string; amount: number; reference: string; reason: string;
+}): Promise<EmailResult> => {
+  try {
+    const html = `<!DOCTYPE html><html><body style="font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:#333; background:#f5f5f5; margin:0; padding:0;">
+      <div style="max-width:600px; margin:20px auto; background:#fff; border-radius:8px; padding:30px;">
+        <h1 style="margin:0 0 10px 0; font-size:22px; font-weight:500; color:#D4AF37;">Your payment is being refunded</h1>
+        <p style="color:#666;">Dear ${escapeHtml(data.customer_name)},</p>
+        <p style="color:#444;">We received your payment of <strong>${escapeHtml(formatCurrency(data.amount))}</strong>, but we could not complete your order: ${escapeHtml(data.reason)}</p>
+        <p style="color:#444;">The full amount is being refunded to your original payment method. Banks usually take 5-7 working days to show it. You do not need to do anything.</p>
+        <p style="color:#666; font-size:13px;">Payment reference: <strong>${escapeHtml(data.reference)}</strong>${config.supportEmail ? ` &middot; Questions? <a href="mailto:${escapeHtml(config.supportEmail)}" style="color:#D4AF37;">${escapeHtml(config.supportEmail)}</a>` : ''}</p>
+        <p style="margin-top:30px; color:#999; font-size:12px; text-align:center;">&copy; ${new Date().getFullYear()} ${escapeHtml(config.brandName)}</p>
+      </div></body></html>`;
+    const info = await transporter.sendMail({
+      from: `"${config.brandName}" <${config.emailUser}>`,
+      to: data.to,
+      subject: `${config.brandName}: your payment is being refunded`,
+      html,
+    });
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+};
+
+/** Operational alert to the store's own mailbox (needs review, refund stuck, coupon limit exceeded ...). No customer details. */
+export const sendAdminAlertEmail = async (data: { subject: string; lines: string[] }): Promise<EmailResult> => {
+  try {
+    const to = config.supportEmail || config.emailUser;
+    if (!to) return { success: false, error: 'no admin mailbox configured' };
+    const html = `<!DOCTYPE html><html><body style="font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:#333;">
+      <h2 style="color:#b71c1c;">${escapeHtml(data.subject)}</h2>
+      <ul>${data.lines.map((l) => `<li>${escapeHtml(l)}</li>`).join('')}</ul>
+      <p style="color:#666; font-size:13px;">Open the admin payment review list (GET /api/payment/review) or the Razorpay dashboard to resolve this.</p>
+    </body></html>`;
+    const info = await transporter.sendMail({
+      from: `"${config.brandName}" <${config.emailUser}>`,
+      to,
+      subject: `[${config.brandName}] ${data.subject}`,
+      html,
+    });
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
   }
 };
