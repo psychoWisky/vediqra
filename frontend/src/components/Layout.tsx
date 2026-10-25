@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import { Outlet, useLocation, useNavigationType } from 'react-router-dom';
 import { ArrowUp } from 'lucide-react';
 import CartDrawer from './CartDrawer';
 import FAQModal from './FAQModal';
@@ -10,6 +10,7 @@ import Footer from './Footer';
 import { publicFetch } from '../utils/api';
 import { OPEN_CART_EVENT } from '../utils/cartUi';
 import { trackPageView } from '../utils/metaPixel';
+import { rememberScroll, restoreScroll } from '../utils/scrollMemory';
 import { setStorefrontTheme } from '../utils/theme';
 
 const Layout: React.FC = () => {
@@ -42,8 +43,14 @@ const Layout: React.FC = () => {
     return () => setStorefrontTheme(false);
   }, []);
 
-  // A new page starts at the top (route changes only; ?query changes such as filters keep the position).
-  useEffect(() => { window.scrollTo(0, 0); }, [location.pathname]);
+  // A new page starts at the top (route changes only; ?query changes such as filters keep the position). Going Back/Forward to
+  // a page we have already scrolled puts it back where it was (the browser's own restoration cannot, because the page is rebuilt).
+  const navType = useNavigationType();
+  useEffect(() => rememberScroll.listen(), []);
+  useLayoutEffect(() => {
+    if (navType === 'POP') return restoreScroll(location.key);
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
 
   // Meta Pixel PageView on client-side navigation. The initial load's PageView is already sent by
   // initMetaPixel() in App.tsx, so this effect only fires on subsequent route changes.

@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom';
 import { Minus, Plus, ShoppingBag, X } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { getImageUrl } from '../utils/helpers';
-import { formatCurrency, lineTotal } from '../utils/money';
-import { useServerQuote } from '../hooks/useServerQuote';
+import { formatCurrency, lineTotal, toPaise } from '../utils/money';
+import { serverLine, useServerQuote } from '../hooks/useServerQuote';
 import { friendlyError } from '../utils/errors';
 import { Modal } from './ui/Modal';
 import { Badge } from './ui/Badge';
@@ -21,6 +21,9 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
   const count = items.reduce((n, i) => n + i.quantity, 0);
   // Shipping / fees / total come from the server's own pricing of this cart (never computed here).
   const { online, loading: quoting, error: quoteError } = useServerQuote(items, { enabled: isOpen });
+  // Show the server's price for each line when it has one (a cart saved earlier may hold an outdated price).
+  const srvLines = items.map((item, i) => serverLine(online, item, i));
+  const pricesChanged = !quoting && items.some((item, i) => { const l = srvLines[i]; return !!l && toPaise(l.price) !== toPaise(item.price); });
   const baseName = (item: (typeof items)[number]) => (item.selected_options?.length ? item.name.replace(/\s*\([^)]*\)\s*$/, '') : item.name);
 
   return (
@@ -37,7 +40,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
       ) : (
         <div className="flex h-full flex-col">
           <ul className="flex-1 space-y-4 p-5">
-            {items.map((item) => (
+            {items.map((item, idx) => (
               <li key={item.id} className="rounded-xl border border-brand-line p-3">
                 <div className="flex gap-3">
                   <img src={getImageUrl(item.image_url)} alt={item.name} className="h-16 w-16 shrink-0 rounded-lg bg-brand-subtle object-cover" />
@@ -65,7 +68,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
                         <Badge tone="accent">Personalised{item.customization?.text_lines?.length ? ` · ${item.customization.text_lines.length} ${item.customization.text_lines.length === 1 ? 'line' : 'lines'}` : ''}{item.customization?.image_urls?.length ? ` · ${item.customization.image_urls.length} ${item.customization.image_urls.length === 1 ? 'image' : 'images'}` : ''}</Badge>
                       ) : null}
                     </div>
-                    <p className="mt-1 text-xs text-brand-muted">{formatCurrency(item.price)} each</p>
+                    <p className="mt-1 text-xs text-brand-muted">{formatCurrency(srvLines[idx]?.price ?? item.price)} each</p>
 
                     <div className="mt-2 flex items-center justify-between">
                       <div className="inline-flex items-center rounded-lg border border-brand-line">
@@ -77,7 +80,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
                           <Plus className="h-4 w-4" aria-hidden="true" />
                         </button>
                       </div>
-                      <p className="text-sm font-bold">{formatCurrency(lineTotal(item.price, item.quantity))}</p>
+                      <p className="text-sm font-bold">{formatCurrency(srvLines[idx]?.total ?? lineTotal(item.price, item.quantity))}</p>
                     </div>
                   </div>
                 </div>
@@ -108,6 +111,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
               {online && <div className="flex justify-between border-t border-brand-line pt-2 text-base font-bold"><dt>Total</dt><dd>{formatCurrency(online.total_amount)}</dd></div>}
               {!online && <div className="flex justify-between border-t border-brand-line pt-2 text-base font-bold"><dt>Subtotal</dt><dd>{quoting ? 'Calculating…' : formatCurrency(total)}</dd></div>}
             </dl>
+            {pricesChanged && <p role="status" className="rounded-lg bg-brand-accent-soft p-2 text-xs text-brand-accent-ink">Some prices have changed since you added these items. The prices shown are the current ones.</p>}
             {quoteError && !quoting && <p role="alert" className="rounded-lg bg-brand-accent-soft p-2 text-xs text-brand-accent-ink">{friendlyError(quoteError, 'We could not calculate shipping just now. It will be shown at checkout.')}</p>}
             <p className="text-xs text-brand-muted">Coupons and the final total are confirmed at checkout.</p>
             <div className="flex gap-3">

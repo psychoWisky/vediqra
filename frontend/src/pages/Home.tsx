@@ -4,6 +4,7 @@ import * as Icons from 'lucide-react';
 import { ArrowRight, PackageCheck, PenLine, ShieldCheck, Sparkles, Upload } from 'lucide-react';
 import { Category, Combo, HeroContent, Product, Stat } from '../types';
 import { apiFetch } from '../utils/api';
+import { useCatalogue } from '../hooks/useCatalogue';
 import { useCategoryTree, categoryLink } from '../hooks/useCategoryTree';
 import HeroSection from '../components/HeroSection';
 import ProductCard from '../components/ProductCard';
@@ -45,7 +46,9 @@ const Home: React.FC = () => {
   const { tree, loading: categoriesLoading } = useCategoryTree();
 
   const [heroes, setHeroes] = useState<HeroContent[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
+  // The same shared product list the Shop page uses, so going Home -> Shop (or back) does not download the catalogue again.
+  const productsRes = useCatalogue<Product[]>('/api/products', []);
+  const products = Array.isArray(productsRes.data) ? productsRes.data : [];
   const [combos, setCombos] = useState<Combo[]>([]);
   const [stats, setStats] = useState<Stat[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
@@ -62,14 +65,12 @@ const Home: React.FC = () => {
   useEffect(() => {
     let alive = true;
     Promise.all([
-      apiFetch<Product[]>('/api/products').catch(() => []),
       apiFetch<Combo[]>('/api/combos').catch(() => []),
       apiFetch<HeroContent[]>('/api/hero').catch(() => []),
       // Only real, admin-configured numbers are ever shown. There are no default/made-up figures.
       apiFetch<{ value?: Stat[] }>('/api/settings?key=stats').catch(() => null),
-    ]).then(([p, c, h, s]) => {
+    ]).then(([c, h, s]) => {
       if (!alive) return;
-      setProducts(p || []);
       setCombos(c || []);
       setHeroes(h || []);
       setStats(Array.isArray((s as any)?.value) ? (s as any).value : []);
@@ -149,7 +150,7 @@ const Home: React.FC = () => {
       <section className="bg-brand-subtle/60" aria-labelledby="home-featured">
         <div className="container-page section">
           <SectionHeading id="home-featured" title="New arrivals" eyebrow="Just added" description={featured.length > 0 ? 'The latest additions to the store.' : undefined} action={featured.length > 0 ? { label: 'View all', to: '/products' } : undefined} />
-          {dataLoading ? (
+          {productsRes.status === 'loading' ? (
             <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-4" aria-busy="true">
               {Array.from({ length: 4 }).map((_, i) => <div key={i}><Skeleton className="aspect-[4/5] w-full" /><Skeleton className="mt-3 h-4 w-3/4" /><Skeleton className="mt-2 h-4 w-1/3" /></div>)}
             </div>

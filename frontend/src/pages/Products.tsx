@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Filter, X, SlidersHorizontal, Search, Share2 } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
 import { Product, Gender, Category } from '../types';
-import { apiFetch } from '../utils/api';
+import { useCatalogue } from '../hooks/useCatalogue';
 import { getImageUrl } from '../utils/helpers';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
@@ -38,6 +38,10 @@ const setMetaTags = (title: string, description: string, imageUrl: string, url: 
   upsert('meta[name="twitter:image"]', 'name', 'twitter:image', imageUrl);
 };
 
+const EMPTY_PRODUCTS: Product[] = [];
+const EMPTY_CATEGORIES: Category[] = [];
+const EMPTY_GENDERS: Gender[] = [];
+
 const SORTS = ['newest', 'price-low', 'price-high'] as const;   // 'newest' is the default (no ?sort= in the URL)
 type SortKey = typeof SORTS[number];
 const PRICE_CEILING = 50000;
@@ -55,12 +59,16 @@ const Products: React.FC = () => {
   const searchQuery = (searchParams.get('search') || '').trim();      // blank / whitespace-only is the same as no search
   const initialProductId = searchParams.get('id');
 
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [genders, setGenders] = useState<Gender[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Shared, short-lived cache (see utils/catalogueCache.ts): returning to the listing needs no request and no skeleton.
+  const productsRes = useCatalogue<Product[]>('/api/products', []);
+  const gendersRes = useCatalogue<Gender[]>('/api/genders', []);
+  const categoriesRes = useCatalogue<Category[]>('/api/categories', []);
+  const products = Array.isArray(productsRes.data) ? productsRes.data : EMPTY_PRODUCTS;
+  const categories = Array.isArray(categoriesRes.data) ? categoriesRes.data : EMPTY_CATEGORIES;
+  const genders = Array.isArray(gendersRes.data) ? gendersRes.data : EMPTY_GENDERS;
+  const loading = productsRes.status === 'loading';
+  const failed = productsRes.status === 'error';
   const [showFilters, setShowFilters] = useState(false);
-  const [failed, setFailed] = useState(false);
 
   // ---- Filters live in the URL, so a reload, the back button, a shared link and the header menu all agree:
   //   ?category=<name> (repeatable)  ?min=<n>  ?max=<n>  ?gender=<name>  ?sort=newest|price-low|price-high  ?search=<text>
@@ -76,7 +84,7 @@ const Products: React.FC = () => {
   const rangeInvalid = rawMin !== null && rawMax !== null && rawMin > rawMax;
   const minPrice = rangeInvalid ? 0 : rawMin ?? 0;
   const maxParam = rangeInvalid ? null : rawMax;
-  const priceBound = Math.max(...products.map((p) => Number(p.price) || 0), PRICE_CEILING);
+  const priceBound = useMemo(() => products.reduce((m, p) => Math.max(m, Number(p.price) || 0), PRICE_CEILING), [products]);
   const priceRange: [number, number] = [minPrice, Math.min(maxParam ?? priceBound, priceBound)];
 
   /** Change the URL's filters. Discrete choices add a history entry (back works); slider drags replace it. */
@@ -102,33 +110,13 @@ const Products: React.FC = () => {
   const setPriceMax = (v: number) => updateParams((p) => { if (v >= priceBound) p.delete('max'); else p.set('max', String(v)); }, true);
   const clearPrice = () => updateParams((p) => { p.delete('min'); p.delete('max'); });
 
-  useEffect(() => { fetchData(); }, []);
+  // Old shared links: /products?id=<id> open the product once the list has settled (as before).
+  useEffect(() => {
+    if (initialProductId && productsRes.status !== 'loading') navigate(`/product/${initialProductId}`, { replace: true });
+  }, [initialProductId, productsRes.status, navigate]);
 
   // Put the page title back when leaving the listing (declared first so it captures the title this page replaces).
   useEffect(() => { const previous = document.title; return () => { document.title = previous; }; }, []);
-
-  const fetchData = async () => {
-    try {
-      let productsFailed = false;
-      const [productsData, gendersData, categoriesData] = await Promise.all([
-        apiFetch('/api/products').catch(() => { productsFailed = true; return []; }),
-        apiFetch('/api/genders').catch(() => []),
-        apiFetch('/api/categories').catch(() => []),
-      ]);
-      setFailed(productsFailed);
-      setProducts(productsData || []);
-      setGenders(gendersData || []);
-      setCategories(categoriesData || []);
-      if (initialProductId) {
-        navigate(`/product/${initialProductId}`, { replace: true });
-        return;
-      }
-    } catch (error) {
-      console.error('Error fetching products:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const getProductCategoryNames = (product: Product): string[] => {
     if (product.categories && product.categories.length > 0) {
@@ -214,18 +202,23 @@ const Products: React.FC = () => {
     } catch { /* user cancelled */ }
   };
 
-  const getCategoryCount = (catName: string) => {
-    const names = new Set(withSubcategoryNames(catName));
-    return products.filter(p => getProductCategoryNames(p).some(c => names.has(c))).length;
-  };
-
-  // Categories that have products (directly or through a subcategory), parents first with their children under them.
+  // Counts and the category lists are derived once per products/categories change (not on every render).
+  const countByName = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const cat of categories) {
+      const names = new Set(withSubcategoryNames(cat.name));
+      m.set(cat.name, products.filter((p) => getProductCategoryNames(p).some((c) => names.has(c))).length);
+    }
+    return m;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products, categories]);
+  const getCategoryCount = (catName: string) => countByName.get(catName) ?? 0;
   const hasProducts = (cat: Category) => getCategoryCount(cat.name) > 0;
-  const topLevel = categories.filter(c => !c.parent_id || !categories.some(p => p.id === c.parent_id));
-  const activeCategories = topLevel.flatMap(parent => [
+  const topLevel = useMemo(() => categories.filter(c => !c.parent_id || !categories.some(p => p.id === c.parent_id)), [categories]);
+  const activeCategories = useMemo(() => topLevel.flatMap(parent => [
     ...(hasProducts(parent) ? [parent] : []),
     ...categories.filter(c => c.parent_id === parent.id && hasProducts(c)),
-  ]);
+  ]), [topLevel, categories, countByName]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   // A plain render function, NOT a component: a component declared here would be a new type on every render, so React would
   // rebuild the whole panel (losing slider drag and keyboard focus) each time the URL changes. `idp` keeps ids unique when the
@@ -334,8 +327,8 @@ const Products: React.FC = () => {
   // The label from the genders API when it lists this value; otherwise the URL value as given (nothing is invented).
   const genderLabel = genders.find((g) => g.name.toLowerCase() === selectedGender.toLowerCase())?.display_name || selectedGender;
   // Recovery shortcuts come from the loaded catalogue only: budget bands that really contain products, and categories that have some.
-  const bandsWithProducts = BUDGET_BANDS.filter((b) => products.some((pr) => pr.price >= (b.min ?? 0) && (b.max === undefined || pr.price <= b.max)));
-  const browseCategories = topLevel.filter(hasProducts).slice(0, 8);
+  const bandsWithProducts = useMemo(() => BUDGET_BANDS.filter((b) => products.some((pr) => pr.price >= (b.min ?? 0) && (b.max === undefined || pr.price <= b.max))), [products]);
+  const browseCategories = useMemo(() => topLevel.filter(hasProducts).slice(0, 8), [topLevel, countByName]);   // eslint-disable-line react-hooks/exhaustive-deps
   const hasOtherFilters = selectedCategories.length > 0 || selectedGender !== 'all' || priceActive;
   const hasActiveFilters = selectedCategories.length > 0 || selectedGender !== 'all' || priceActive || Boolean(searchQuery);
 
@@ -417,7 +410,7 @@ const Products: React.FC = () => {
         </aside>
         <Modal isOpen={showFilters} onClose={() => setShowFilters(false)} title="Filters" placement="left">
           <div className="p-5 pb-0">
-            {renderFilters('drawer')}
+            {showFilters && renderFilters('drawer')}
             <div className="sticky bottom-0 -mx-5 mt-6 flex gap-3 border-t border-brand-line bg-brand-elevated p-4">
               <button type="button" onClick={clearFilters} className="btn-secondary flex-1">Reset</button>
               <button type="button" onClick={() => setShowFilters(false)} className="btn-primary flex-1">Show {filteredProducts.length} {filteredProducts.length === 1 ? 'product' : 'products'}</button>
@@ -447,7 +440,7 @@ const Products: React.FC = () => {
               ))}
             </div>
           ) : failed ? (
-            <ErrorState title="We could not load products" description="Please check your connection and try again." action={<button type="button" className="btn-primary" onClick={() => { setLoading(true); setFailed(false); fetchData(); }}>Try again</button>} />
+            <ErrorState title="We could not load products" description="Please check your connection and try again." action={<button type="button" className="btn-primary" onClick={() => { productsRes.retry(); if (gendersRes.status === 'error') gendersRes.retry(); if (categoriesRes.status === 'error') categoriesRes.retry(); }}>Try again</button>} />
           ) : filteredProducts.length > 0 ? (
             <div className="grid grid-cols-2 gap-x-4 gap-y-8 lg:grid-cols-3 xl:grid-cols-4">
               {filteredProducts.map((product) => <ProductCard key={product.id} product={product} />)}

@@ -19,6 +19,18 @@ const getBaseUrl = (): string => {
   return raw.endsWith('/api') ? raw.slice(0, -4) : raw;
 };
 
+import { invalidateCatalogue } from './catalogueCache';
+
+/** POSTs that only read or record something: they cannot change products, prices or stock, so they keep the cache. */
+const READ_ONLY_POSTS = ['/api/orders/quote', '/api/popups/track-', '/api/upload/customization'];
+
+/** A successful write (order placed, admin edit, ...) may change products, prices or stock: drop the cached catalogue. */
+const noteWrite = (method?: string, path = '') => {
+  if (!method || /^(GET|HEAD|OPTIONS)$/i.test(method)) return;
+  if (READ_ONLY_POSTS.some((p) => path.startsWith(p))) return;
+  invalidateCatalogue();
+};
+
 /** Error carrying the HTTP status so callers can tell "your input was rejected" (4xx) from "our server failed" (5xx). */
 export class HttpError extends Error {
   status: number;
@@ -70,6 +82,7 @@ export const apiFetch = async <T = any>(
   }
 
   if (!res.ok) throw await errorFrom(res);
+  noteWrite(options.method, path);
 
   return res.json();
 };
@@ -90,6 +103,7 @@ export const publicFetch = async <T = any>(
   const res = await fetch(url, { ...options, headers });
 
   if (!res.ok) throw await errorFrom(res);
+  noteWrite(options.method, path);
 
   return res.json();
 };
@@ -114,6 +128,7 @@ export const uploadFetch = async <T = any>(
     const text = await res.text();
     throw new HttpError(`Upload error ${res.status}: ${text.substring(0, 100)}`, res.status);
   }
+  invalidateCatalogue();
 
   return res.json();
 };

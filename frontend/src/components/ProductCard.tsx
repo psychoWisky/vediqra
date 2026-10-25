@@ -132,4 +132,5 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   );
 };
 
-export default ProductCard;
+// The product objects come from the shared cache, so their identity is stable and unchanged cards are skipped on re-render.
+export default React.memo(ProductCard);
