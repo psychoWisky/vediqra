@@ -1,10 +1,12 @@
-import React, { useEffect, useId, useRef, useState } from 'react';
-import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { ChevronDown, Menu, Search, ShoppingBag } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Link, NavLink, useLocation } from 'react-router-dom';
+import { ChevronDown, Menu, ShoppingBag } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useCategoryTree, categoryLink } from '../hooks/useCategoryTree';
 import { Modal } from './ui/Modal';
 import Logo from './Logo';
+import HeaderSearch from './HeaderSearch';
+import { BUDGET_BANDS, budgetLink } from '../utils/shopLinks';
 
 interface HeaderProps {
   logo: string | null;
@@ -15,40 +17,6 @@ interface HeaderProps {
 
 const navLink = ({ isActive }: { isActive: boolean }) =>
   `rounded-lg px-3 py-2 text-sm font-semibold transition-colors hover:bg-brand-line/50 ${isActive ? 'text-brand-accent-ink' : 'text-brand-muted hover:text-brand-ink'}`;
-
-/** Desktop search: a real <form> that opens the product listing with ?search=. */
-const SearchForm: React.FC<{ className?: string; autoFocus?: boolean; onDone?: () => void }> = ({ className = '', autoFocus, onDone }) => {
-  const navigate = useNavigate();
-  const [q, setQ] = useState('');
-  const id = useId();
-  return (
-    <form
-      role="search"
-      className={className}
-      onSubmit={(e) => {
-        e.preventDefault();
-        const term = q.trim();
-        navigate(term ? `/products?search=${encodeURIComponent(term)}` : '/products');
-        setQ('');
-        onDone?.();
-      }}
-    >
-      <label htmlFor={id} className="sr-only">Search products</label>
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-muted" aria-hidden="true" />
-        <input
-          id={id}
-          type="search"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search products"
-          autoFocus={autoFocus}
-          className="input !min-h-[40px] !rounded-full !py-2 !pl-9 !pr-4"
-        />
-      </div>
-    </form>
-  );
-};
 
 const Header: React.FC<HeaderProps> = ({ logo, onLogoError, onOpenCart, onOpenFAQ }) => {
   const { itemCount } = useCart();
@@ -62,7 +30,9 @@ const Header: React.FC<HeaderProps> = ({ logo, onLogoError, onOpenCart, onOpenFA
   const shopOpen = hoverOpen || pinned;
   const setShopOpen = (v: boolean) => { setHoverOpen(v); setPinned(v); };
   const [mobileShopOpen, setMobileShopOpen] = useState(false);
+  const [mobileBudgetOpen, setMobileBudgetOpen] = useState(false);
   const shopRef = useRef<HTMLDivElement>(null);
+  const shopBtnRef = useRef<HTMLButtonElement>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout>>();
 
   // close menus on navigation
@@ -71,7 +41,11 @@ const Header: React.FC<HeaderProps> = ({ logo, onLogoError, onOpenCart, onOpenFA
   // Escape / outside click close the desktop dropdown
   useEffect(() => {
     if (!shopOpen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShopOpen(false); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (shopRef.current?.contains(document.activeElement)) shopBtnRef.current?.focus();      // keep the keyboard user's place
+      setShopOpen(false);
+    };
     const onDown = (e: MouseEvent) => { if (shopRef.current && !shopRef.current.contains(e.target as Node)) setShopOpen(false); };
     document.addEventListener('keydown', onKey);
     document.addEventListener('mousedown', onDown);
@@ -97,18 +71,32 @@ const Header: React.FC<HeaderProps> = ({ logo, onLogoError, onOpenCart, onOpenFA
 
         {/* desktop navigation */}
         <nav aria-label="Main" className="ml-6 hidden items-center gap-1 lg:flex">
-          <div ref={shopRef} className="relative" onMouseEnter={openShop} onMouseLeave={closeShopSoon}>
+          <div
+            ref={shopRef}
+            className="relative"
+            onMouseEnter={openShop}
+            onMouseLeave={closeShopSoon}
+            onBlur={(e) => { if (!shopRef.current?.contains(e.relatedTarget as Node | null)) setPinned(false); }}
+          >
             <button
+              ref={shopBtnRef}
               type="button"
               aria-expanded={shopOpen}
               aria-controls="shop-menu"
               onClick={() => (pinned ? setShopOpen(false) : setPinned(true))}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  setPinned(true);
+                  setTimeout(() => document.querySelector<HTMLAnchorElement>('#shop-menu a')?.focus(), 0);      // first link of the opened menu
+                }
+              }}
               className={`${navLink({ isActive: location.pathname.startsWith('/products') })} inline-flex items-center gap-1`}
             >
               Shop <ChevronDown className={`h-4 w-4 transition-transform ${shopOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
             </button>
             {shopOpen && (
-              <div id="shop-menu" className="absolute left-0 top-full z-50 mt-1 w-[44rem] max-w-[calc(100vw-2rem)] rounded-xl border border-brand-line bg-brand-elevated p-5 shadow-pop">
+              <div id="shop-menu" className="absolute left-0 top-full z-50 mt-1 max-h-[calc(100vh-6rem)] w-[44rem] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-xl border border-brand-line bg-brand-elevated p-5 shadow-pop">
                 {tree.length === 0 ? (
                   <p className="text-sm text-brand-muted">Categories will appear here.</p>
                 ) : (
@@ -129,7 +117,15 @@ const Header: React.FC<HeaderProps> = ({ logo, onLogoError, onOpenCart, onOpenFA
                     ))}
                   </ul>
                 )}
-                <div className="mt-5 border-t border-brand-line pt-3">
+                <div className="mt-5 border-t border-brand-line pt-4">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-brand-muted">Shop by budget</p>
+                  <ul className="flex flex-wrap gap-2">
+                    {BUDGET_BANDS.map((b) => (
+                      <li key={b.key}><Link to={budgetLink(b)} className="badge-neutral !px-3 !py-2 text-xs hover:bg-brand-accent-soft hover:text-brand-accent-ink">{b.label}</Link></li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="mt-4 border-t border-brand-line pt-3">
                   <Link to="/products" className="text-sm font-semibold hover:text-brand-accent-ink">View all products →</Link>
                 </div>
               </div>
@@ -141,8 +137,7 @@ const Header: React.FC<HeaderProps> = ({ logo, onLogoError, onOpenCart, onOpenFA
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
-          <SearchForm className="hidden w-56 xl:block" />
-          <Link to="/products" aria-label="Search products" className="btn-ghost !px-2 xl:hidden"><Search className="h-5 w-5" aria-hidden="true" /></Link>
+          <HeaderSearch className="hidden w-60 md:block xl:w-80" />
           <button type="button" onClick={onOpenCart} aria-label={`Open cart, ${itemCount} ${itemCount === 1 ? 'item' : 'items'}`} className="btn-ghost relative !px-2">
             <ShoppingBag className="h-6 w-6" aria-hidden="true" />
             {itemCount > 0 && (
@@ -151,13 +146,16 @@ const Header: React.FC<HeaderProps> = ({ logo, onLogoError, onOpenCart, onOpenFA
           </button>
         </div>
       </div>
+      {/* phones: the search box gets its own full-width row under the bar (an input, not a link to another page) */}
+      <div className="container-page pb-3 md:hidden">
+        <HeaderSearch />
+      </div>
     </header>
 
       {/* mobile / tablet navigation drawer (outside <header>: backdrop-filter would trap position:fixed) */}
       <Modal isOpen={menuOpen} onClose={() => setMenuOpen(false)} title="Menu" placement="left">
         <div className="p-5">
-          <SearchForm autoFocus={false} onDone={() => setMenuOpen(false)} />
-          <nav aria-label="Mobile" className="mt-4">
+          <nav aria-label="Mobile">
             <ul className="divide-y divide-brand-line">
               <li>
                 <button type="button" aria-expanded={mobileShopOpen} onClick={() => setMobileShopOpen((o) => !o)} className="flex w-full items-center justify-between py-3.5 text-left font-semibold">
@@ -178,6 +176,16 @@ const Header: React.FC<HeaderProps> = ({ logo, onLogoError, onOpenCart, onOpenFA
                         )}
                       </li>
                     ))}
+                  </ul>
+                )}
+              </li>
+              <li>
+                <button type="button" aria-expanded={mobileBudgetOpen} onClick={() => setMobileBudgetOpen((o) => !o)} className="flex w-full items-center justify-between py-3.5 text-left font-semibold">
+                  Shop by budget <ChevronDown className={`h-4 w-4 transition-transform ${mobileBudgetOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+                </button>
+                {mobileBudgetOpen && (
+                  <ul className="pb-3 pl-2">
+                    {BUDGET_BANDS.map((b) => (<li key={b.key}><Link to={budgetLink(b)} className="block py-2 text-sm">{b.label}</Link></li>))}
                   </ul>
                 )}
               </li>

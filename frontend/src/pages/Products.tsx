@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Filter, X, SlidersHorizontal, Search, Share2 } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
 import { Product, Gender, Category } from '../types';
@@ -11,6 +11,7 @@ import { BRAND } from '../config/brand'
 import { Modal } from '../components/ui/Modal';
 import { Button, ButtonLink } from '../components/ui/Button';
 import { EmptyState, ErrorState, Skeleton } from '../components/ui/States';
+import { priceFilterLabel } from '../utils/shopLinks';
 
 /* ─── Dynamic OG / Twitter meta helper ─── */
 const setMetaTags = (title: string, description: string, imageUrl: string, url: string) => {
@@ -36,32 +37,54 @@ const setMetaTags = (title: string, description: string, imageUrl: string, url: 
   upsert('meta[name="twitter:image"]', 'name', 'twitter:image', imageUrl);
 };
 
+const SORTS = ['popular', 'price-low', 'price-high', 'newest'] as const;
+type SortKey = typeof SORTS[number];
+const PRICE_CEILING = 50000;
+
+/** A non-negative number from a URL parameter, or null when absent / not a number. */
+const numParam = (v: string | null): number | null => {
+  if (v === null || v.trim() === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+};
+
 const Products: React.FC = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const initialCategory = searchParams.get('category');
   const searchQuery = searchParams.get('search') || '';
   const initialProductId = searchParams.get('id');
 
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [genders, setGenders] = useState<Gender[]>([]);
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [priceRange, setPriceRange] = useState([0, 50000]);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(
-    initialCategory ? [initialCategory] : []
-  );
-  const [selectedGender, setSelectedGender] = useState<string>('all');
   const [showFilters, setShowFilters] = useState(false);
   const [failed, setFailed] = useState(false);
-  const [sortBy, setSortBy] = useState<'popular' | 'price-low' | 'price-high' | 'newest'>('popular');
+
+  // ---- Filters live in the URL, so a reload, the back button, a shared link and the header menu all agree:
+  //   ?category=<name> (repeatable)  ?min=<n>  ?max=<n>  ?gender=<name>  ?sort=newest|price-low|price-high  ?search=<text>
+  const categoryKey = searchParams.getAll('category').join('\u0001');
+  const selectedCategories = useMemo(() => (categoryKey ? categoryKey.split('\u0001') : []), [categoryKey]);
+  const selectedGender = searchParams.get('gender') || 'all';
+  const sortParam = searchParams.get('sort');
+  const sortBy: SortKey = (SORTS as readonly string[]).includes(sortParam || '') ? (sortParam as SortKey) : 'popular';
+  const minPrice = numParam(searchParams.get('min')) ?? 0;
+  const maxParam = numParam(searchParams.get('max'));
+  const priceBound = Math.max(...products.map((p) => Number(p.price) || 0), PRICE_CEILING);
+  const priceRange: [number, number] = [minPrice, maxParam ?? priceBound];
+
+  /** Change the URL's filters. Discrete choices add a history entry (back works); slider drags replace it. */
+  const updateParams = (mutate: (p: URLSearchParams) => void, replace = false) => {
+    const next = new URLSearchParams(searchParams);
+    mutate(next);
+    setSearchParams(next, { replace });
+  };
+  const setSortBy = (v: SortKey) => updateParams((p) => { if (v === 'popular') p.delete('sort'); else p.set('sort', v); });
+  const setSelectedGender = (v: string) => updateParams((p) => { if (v === 'all') p.delete('gender'); else p.set('gender', v); });
+  const setPriceMax = (v: number) => updateParams((p) => { if (v >= priceBound) p.delete('max'); else p.set('max', String(v)); }, true);
+  const clearPrice = () => updateParams((p) => { p.delete('min'); p.delete('max'); });
 
   useEffect(() => { fetchData(); }, []);
-
-  useEffect(() => {
-    filterAndSortProducts();
-  }, [products, priceRange, selectedCategories, selectedGender, sortBy, searchQuery]);
 
   /* Update meta tags whenever category selection changes */
   useEffect(() => {
@@ -87,7 +110,7 @@ const Products: React.FC = () => {
         window.location.href,
       );
     }
-  }, [selectedCategories, categories]);
+  }, [categoryKey, categories]);
 
   const fetchData = async () => {
     try {
@@ -99,17 +122,12 @@ const Products: React.FC = () => {
       ]);
       setFailed(productsFailed);
       setProducts(productsData || []);
-      setFilteredProducts(productsData || []);
       setGenders(gendersData || []);
       setCategories(categoriesData || []);
       if (initialProductId) {
         navigate(`/product/${initialProductId}`, { replace: true });
         return;
       }
-      const maxPrice = productsData?.length > 0
-        ? Math.max(...(productsData as Product[]).map((p) => p.price), 50000)
-        : 50000;
-      setPriceRange([0, maxPrice]);
     } catch (error) {
       console.error('Error fetching products:', error);
     } finally {
@@ -131,7 +149,7 @@ const Products: React.FC = () => {
     return [name, ...categories.filter(c => c.parent_id === cat.id).map(c => c.name)];
   };
 
-  const filterAndSortProducts = () => {
+  const filteredProducts = useMemo(() => {
     let filtered = [...products];
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
@@ -165,21 +183,21 @@ const Products: React.FC = () => {
         break;
       default: break;
     }
-    setFilteredProducts(filtered);
-  };
+    return filtered;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products, categories, searchQuery, minPrice, maxParam, priceBound, categoryKey, selectedGender, sortBy]);
 
   const toggleCategory = (categoryName: string) => {
-    setSelectedCategories(prev =>
-      prev.includes(categoryName)
-        ? prev.filter(c => c !== categoryName)
-        : [...prev, categoryName]
-    );
+    updateParams((p) => {
+      const current = p.getAll('category');
+      p.delete('category');
+      (current.includes(categoryName) ? current.filter((c) => c !== categoryName) : [...current, categoryName]).forEach((c) => p.append('category', c));
+    });
   };
 
+  // Clears the filters; a text search stays (it has its own box in the header).
   const clearFilters = () => {
-    setSelectedCategories([]);
-    setSelectedGender('all');
-    setPriceRange([0, Math.max(...products.map(p => p.price), 50000)]);
+    updateParams((p) => { p.delete('category'); p.delete('gender'); p.delete('min'); p.delete('max'); });
   };
 
   const handleShareCategory = async () => {
@@ -216,9 +234,9 @@ const Products: React.FC = () => {
         <h4 className="font-semibold text-sm mb-2">Price Range</h4>
         <input
           type="range" min="0"
-          max={Math.max(...products.map(p => p.price), 50000)}
+          max={priceBound}
           step="100" value={priceRange[1]}
-          onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])}
+          onChange={(e) => setPriceMax(parseInt(e.target.value))}
           className="w-full accent-brand-accent"
         />
         <div className="flex justify-between text-xs mt-1">
@@ -290,9 +308,9 @@ const Products: React.FC = () => {
 
   const activeCategory = selectedCategories.length === 1 ? categories.find((c) => c.name === selectedCategories[0]) : undefined;
   const activeParent = activeCategory?.parent_id ? categories.find((c) => c.id === activeCategory.parent_id) : undefined;
-  const maxPriceBound = Math.max(...products.map((p) => Number(p.price) || 0), 50000);
-  const filterCount = selectedCategories.length + (selectedGender !== 'all' ? 1 : 0) + (priceRange[1] < maxPriceBound ? 1 : 0);
-  const hasActiveFilters = selectedCategories.length > 0 || selectedGender !== 'all' || Boolean(searchQuery);
+  const priceActive = minPrice > 0 || (maxParam !== null && maxParam < priceBound);
+  const filterCount = selectedCategories.length + (selectedGender !== 'all' ? 1 : 0) + (priceActive ? 1 : 0);
+  const hasActiveFilters = selectedCategories.length > 0 || selectedGender !== 'all' || priceActive || Boolean(searchQuery);
 
   return (
     <div className="container-page py-8 md:py-12">
@@ -341,6 +359,12 @@ const Products: React.FC = () => {
               <button type="button" onClick={() => toggleCategory(cat)} aria-label={`Remove filter ${cat}`} className="rounded-full p-0.5 hover:bg-brand-accent/20"><X className="h-3 w-3" aria-hidden="true" /></button>
             </span>
           ))}
+          {priceActive && (
+            <span className="badge-accent !py-1.5">
+              {priceFilterLabel(minPrice, maxParam)}
+              <button type="button" onClick={clearPrice} aria-label="Remove price filter" className="rounded-full p-0.5 hover:bg-brand-accent/20"><X className="h-3 w-3" aria-hidden="true" /></button>
+            </span>
+          )}
           {selectedGender !== 'all' && (
             <span className="badge-accent !py-1.5 capitalize">
               {selectedGender}
