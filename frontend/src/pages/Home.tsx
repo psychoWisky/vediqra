@@ -12,6 +12,7 @@ import Popup from '../components/Popup';
 import { ButtonLink } from '../components/ui/Button';
 import { SectionHeading } from '../components/ui/SectionHeading';
 import { Skeleton } from '../components/ui/States';
+import { getImageUrl } from '../utils/helpers';
 
 const FEATURED_COUNT = 8;
 const COMBO_COUNT = 4;
@@ -20,7 +21,7 @@ const COMBO_COUNT = 4;
 const CategoryVisual: React.FC<{ category: Category }> = ({ category }) => {
   const type = category.icon_type;
   if (type === 'image' && category.image_url) {
-    return <img src={category.image_url} alt="" loading="lazy" className="h-full w-full object-cover" />;
+    return <img src={getImageUrl(category.image_url)} alt="" loading="lazy" onError={(e) => { if (!e.currentTarget.src.endsWith('/placeholder.svg')) e.currentTarget.src = '/placeholder.svg'; }} className="h-full w-full object-cover transition duration-500 md:group-hover:scale-105" />;
   }
   if (type === 'emoji' && category.icon) {
     return <span className="text-4xl" aria-hidden="true">{category.icon}</span>;
@@ -85,6 +86,7 @@ const Home: React.FC = () => {
       .catch(() => {});
   }, []);
 
+  // /api/products is newest first, so the first few are honestly "new arrivals" (no curated or bestseller list exists).
   const featured = products.slice(0, FEATURED_COUNT);
 
   return (
@@ -95,19 +97,20 @@ const Home: React.FC = () => {
       {heroes.length > 0 ? (
         <HeroSection heroes={heroes} />
       ) : (
-        <section className="bg-brand-subtle">
-          <div className="container-page grid items-center gap-10 py-14 md:grid-cols-2 md:py-20">
+        <section className="relative overflow-hidden bg-brand-panel text-white">
+          <div aria-hidden="true" className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full bg-brand-accent/10 blur-3xl" />
+          <div className="container-page relative grid items-center gap-10 py-16 md:grid-cols-2 md:py-24">
             <div>
-              <p className="eyebrow mb-3">Personalised products</p>
-              <h1 className="text-4xl font-extrabold leading-tight sm:text-5xl">Gifts made personal.</h1>
-              <p className="mt-4 max-w-md text-lg text-brand-muted">Add your own text and photos to mugs, frames, cushions, t-shirts and more.</p>
+              <p className="eyebrow !text-brand-accent mb-3">Personalised products</p>
+              <h1 className="text-4xl font-extrabold leading-tight sm:text-5xl lg:text-6xl">Gifts made <span className="text-brand-accent">personal.</span></h1>
+              <p className="mt-4 max-w-md text-lg text-white/75">Add your own text and photos to mugs, frames, cushions, t-shirts and more.</p>
               <div className="mt-8 flex flex-wrap gap-3">
-                <ButtonLink to="/products">Shop products <ArrowRight className="h-4 w-4" aria-hidden="true" /></ButtonLink>
-                <ButtonLink to="/custom-combo" variant="secondary">Build a custom combo</ButtonLink>
+                <ButtonLink to="/products" variant="accent">Shop products <ArrowRight className="h-4 w-4" aria-hidden="true" /></ButtonLink>
+                <ButtonLink to="/custom-combo" variant="secondary" className="!border-white/30 !bg-transparent !text-white hover:!bg-white/10">Build a custom combo</ButtonLink>
               </div>
             </div>
             {/* image slot: replaced by real VEDIQRA photography (Admin > Marketing > Hero) */}
-            <div aria-hidden="true" className="mx-auto flex aspect-[4/3] w-full max-w-md items-center justify-center rounded-2xl border border-brand-line bg-brand-elevated">
+            <div aria-hidden="true" className="mx-auto hidden aspect-[4/3] w-full max-w-md items-center justify-center rounded-2xl border border-brand-accent/30 bg-white/5 md:flex">
               <span className="text-8xl font-extrabold text-brand-accent/70">V</span>
             </div>
           </div>
@@ -116,24 +119,21 @@ const Home: React.FC = () => {
 
       {/* 2. Category discovery (read from the category tree; parents list their subcategories) */}
       <section className="container-page section" aria-labelledby="home-categories">
-        <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-          <h2 id="home-categories" className="text-2xl font-bold sm:text-3xl">Shop by category</h2>
-          <Link to="/products" className="inline-flex items-center gap-1 text-sm font-semibold hover:text-brand-accent-ink">View all products <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
-        </div>
+        <SectionHeading id="home-categories" title="Shop by category" eyebrow="Browse" action={{ label: 'View all products', to: '/products' }} />
         {categoriesLoading ? (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4" aria-busy="true">
-            {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-40" />)}
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4" aria-busy="true">
+            {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="aspect-[4/3]" />)}
           </div>
         ) : tree.length === 0 ? (
           <p className="rounded-xl border border-dashed border-brand-line bg-brand-subtle/60 px-6 py-10 text-center text-sm text-brand-muted">Categories will appear here.</p>
         ) : (
-          <ul className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+          <ul className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
             {tree.map((parent) => (
               <li key={parent.id}>
                 <Link to={categoryLink(parent)} className="card group flex h-full flex-col overflow-hidden transition-colors hover:border-brand-accent">
-                  <div className="flex h-24 items-center justify-center bg-brand-subtle sm:h-28"><CategoryVisual category={parent} /></div>
-                  <div className="flex flex-1 flex-col p-4">
-                    <h3 className="text-sm font-bold sm:text-base">{parent.name}</h3>
+                  <div className="flex aspect-[4/3] items-center justify-center overflow-hidden bg-brand-subtle"><CategoryVisual category={parent} /></div>
+                  <div className="flex flex-1 flex-col border-t-2 border-brand-accent/60 p-3 sm:p-4">
+                    <h3 className="flex items-center justify-between gap-2 text-sm font-bold sm:text-base">{parent.name}<ArrowRight className="h-4 w-4 shrink-0 text-brand-accent-ink transition-transform md:group-hover:translate-x-1" aria-hidden="true" /></h3>
                     {parent.children && parent.children.length > 0 && (
                       <p className="mt-1 line-clamp-2 text-xs text-brand-muted">{parent.children.map((c) => c.name).join(' · ')}</p>
                     )}
@@ -148,10 +148,7 @@ const Home: React.FC = () => {
       {/* 3. Featured products */}
       <section className="bg-brand-subtle/60" aria-labelledby="home-featured">
         <div className="container-page section">
-          <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-            <h2 id="home-featured" className="text-2xl font-bold sm:text-3xl">Featured products</h2>
-            {featured.length > 0 && <Link to="/products" className="inline-flex items-center gap-1 text-sm font-semibold hover:text-brand-accent-ink">View all <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>}
-          </div>
+          <SectionHeading id="home-featured" title="New arrivals" eyebrow="Just added" description={featured.length > 0 ? 'The latest additions to the store.' : undefined} action={featured.length > 0 ? { label: 'View all', to: '/products' } : undefined} />
           {dataLoading ? (
             <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-4" aria-busy="true">
               {Array.from({ length: 4 }).map((_, i) => <div key={i}><Skeleton className="aspect-[4/5] w-full" /><Skeleton className="mt-3 h-4 w-3/4" /><Skeleton className="mt-2 h-4 w-1/3" /></div>)}
@@ -199,10 +196,7 @@ const Home: React.FC = () => {
       <section className="container-page section" aria-labelledby="home-combos">
         {combos.length > 0 ? (
           <>
-            <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-              <div><h2 id="home-combos" className="text-2xl font-bold sm:text-3xl">Combos</h2><p className="mt-2 text-brand-muted">Sets of products sold together at one price.</p></div>
-              <Link to="/combos" className="inline-flex items-center gap-1 text-sm font-semibold hover:text-brand-accent-ink">All combos <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
-            </div>
+            <SectionHeading id="home-combos" title="Combos" eyebrow="Sets" description="Sets of products sold together at one price." action={{ label: 'All combos', to: '/combos' }} />
             <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-4">
               {combos.slice(0, COMBO_COUNT).map((c) => <ComboCard key={c.id} combo={c} />)}
             </div>
@@ -210,15 +204,15 @@ const Home: React.FC = () => {
         ) : (
           <h2 id="home-combos" className="sr-only">Build a custom combo</h2>
         )}
-        <div className={`card flex flex-col items-start gap-4 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8 ${combos.length > 0 ? 'mt-12' : ''}`}>
+        <div className={`flex flex-col items-start gap-5 rounded-2xl border border-brand-accent/30 bg-brand-panel p-6 text-white sm:flex-row sm:items-center sm:justify-between sm:p-8 ${combos.length > 0 ? 'mt-12' : ''}`}>
           <div className="flex items-start gap-4">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-accent-soft text-brand-accent-ink"><Sparkles className="h-5 w-5" aria-hidden="true" /></span>
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-accent text-[#111111]"><Sparkles className="h-5 w-5" aria-hidden="true" /></span>
             <div>
               <p className="text-lg font-bold">Build your own combo</p>
-              <p className="text-sm text-brand-muted">Pick the products you want. The more items you add, the bigger the discount.</p>
+              <p className="mt-1 max-w-md text-sm text-white/75">Pick the products you want and see the combo price before you order.</p>
             </div>
           </div>
-          <ButtonLink to="/custom-combo" variant="secondary" className="shrink-0">Start building</ButtonLink>
+          <ButtonLink to="/custom-combo" variant="accent" className="shrink-0">Start building <ArrowRight className="h-4 w-4" aria-hidden="true" /></ButtonLink>
         </div>
       </section>
 

@@ -10,14 +10,16 @@ interface Props {
   action?: { label: string; to: string };
   align?: 'left' | 'center';
   as?: 'h1' | 'h2';
+  /** id of the heading element, for aria-labelledby on the section. */
+  id?: string;
 }
 
 /** The one heading style for page sections: eyebrow, title, optional description and action link. */
-export const SectionHeading: React.FC<Props> = ({ title, eyebrow, description, action, align = 'left', as: Tag = 'h2' }) => (
+export const SectionHeading: React.FC<Props> = ({ title, eyebrow, description, action, align = 'left', as: Tag = 'h2', id }) => (
   <div className={`mb-8 flex flex-wrap items-end justify-between gap-4 ${align === 'center' ? 'justify-center text-center' : ''}`}>
     <div className={align === 'center' ? 'mx-auto max-w-2xl' : 'max-w-2xl'}>
       {eyebrow && <p className="eyebrow mb-2">{eyebrow}</p>}
-      <Tag className="text-2xl font-bold sm:text-3xl">{title}</Tag>
+      <Tag id={id} className="text-2xl font-bold sm:text-3xl">{title}</Tag>
       {description && <p className="mt-2 text-brand-muted">{description}</p>}
     </div>
     {action && (

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Play, Pause, Volume2, VolumeX, ChevronLeft, ChevronRight } from 'lucide-react';
 import { HeroContent } from '../types';
 
@@ -9,13 +10,22 @@ interface HeroSectionProps {
   interval?: number;
 }
 
+/** Admin-entered CTA target: on-site paths use the router (no full page reload), anything else is a normal link. */
+const CtaLink: React.FC<React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }> = ({ href, children, ...rest }) =>
+  href.startsWith('/') && !href.startsWith('//')
+    ? <Link to={href} {...rest}>{children}</Link>
+    : <a href={href} {...rest}>{children}</a>;
+
 const HeroSection: React.FC<HeroSectionProps> = ({
   heroes,
   autoplay = true,
   interval = 5000
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(autoplay);
+  const reduceMotion = useReducedMotion();
+  const [isPlaying, setIsPlaying] = useState(autoplay);                       // video play/pause
+  const [rotating, setRotating] = useState(autoplay);                        // automatic slide rotation (user can pause it)
+  const autoRotate = rotating && !reduceMotion && heroes.length > 1;          // never rotate on their own for people who asked for less motion
   const [isMuted, setIsMuted] = useState(true);
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -26,7 +36,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({
   useEffect(() => {
     if (heroes.length === 0) return;
 
-    if (isPlaying) {
+    if (autoRotate) {
       timeoutRef.current = setTimeout(() => {
         nextSlide();
       }, interval);
@@ -37,7 +47,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [currentIndex, isPlaying, heroes.length]);
+  }, [currentIndex, autoRotate, heroes.length]);
 
   useEffect(() => {
     if (videoRef.current) {
@@ -109,7 +119,9 @@ const HeroSection: React.FC<HeroSectionProps> = ({
   }
 
   return (
-    <div className="relative h-screen max-h-[800px] min-h-[600px] overflow-hidden">
+    <div aria-roledescription={heroes.length > 1 ? 'carousel' : undefined}
+      aria-label={heroes.length > 1 ? 'Featured banners' : undefined}
+      className="relative h-[72vh] max-h-[760px] min-h-[460px] overflow-hidden bg-brand-panel md:h-[80vh] md:min-h-[560px]">
       {/* Background Media */}
       <AnimatePresence mode="wait">
         <motion.div
@@ -142,7 +154,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({
           ) : (
             <img
               src={currentHero.media_url}
-              alt={currentHero.title}
+              alt=""
               className="w-full h-full object-cover"
             />
           )}
@@ -171,22 +183,22 @@ const HeroSection: React.FC<HeroSectionProps> = ({
             transition={{ duration: 0.8, delay: 0.2 }}
             className={`${alignment.content} ${alignment.text} text-white`}
           >
-            <h1 className="text-5xl md:text-7xl font-heading font-bold mb-6 leading-tight">
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-heading font-bold mb-4 md:mb-6 leading-tight">
               {currentHero.title}
             </h1>
-            <p className="text-xl md:text-2xl text-gray-200 mb-8 leading-relaxed">
+            <p className="text-lg md:text-2xl text-gray-200 mb-8 leading-relaxed">
               {currentHero.subtitle}
             </p>
             {currentHero.cta_text && currentHero.cta_link && (
-              <a
+              <CtaLink
                 href={currentHero.cta_link}
-                className={`inline-flex items-center px-8 py-4 bg-brand-accent text-[#111111] rounded-xl hover:bg-brand-accent-ink transition-all duration-300 text-lg font-medium group ${
+                className={`inline-flex items-center px-6 py-3 md:px-8 md:py-4 bg-brand-accent text-[#111111] rounded-xl hover:bg-brand-accent-ink transition-all duration-300 text-base md:text-lg font-semibold group ${
                   alignment.text === 'text-center' ? 'mx-auto' : ''
                 }`}
               >
                 {currentHero.cta_text}
-                <ChevronRight className="ml-2 h-5 w-5 group-hover:translate-x-2 transition-transform" />
-              </a>
+                <ChevronRight className="ml-2 h-5 w-5 group-hover:translate-x-2 transition-transform" aria-hidden="true" />
+              </CtaLink>
             )}
           </motion.div>
         </div>
@@ -197,12 +209,14 @@ const HeroSection: React.FC<HeroSectionProps> = ({
         <div className="absolute bottom-8 right-8 z-20 flex gap-2">
           <button
             onClick={togglePlay}
+            aria-label={isPlaying ? 'Pause video' : 'Play video'}
             className="p-3 bg-white/20 backdrop-blur-sm rounded-full hover:bg-white/40 transition-colors text-white"
           >
             {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
           </button>
           <button
             onClick={toggleMute}
+            aria-label={isMuted ? 'Unmute video' : 'Mute video'}
             className="p-3 bg-white/20 backdrop-blur-sm rounded-full hover:bg-white/40 transition-colors text-white"
           >
             {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
@@ -215,17 +229,31 @@ const HeroSection: React.FC<HeroSectionProps> = ({
         <>
           <button
             onClick={prevSlide}
-            className="absolute left-8 top-1/2 -translate-y-1/2 z-20 p-3 bg-white/20 backdrop-blur-sm rounded-full hover:bg-white/40 transition-colors text-white"
+            aria-label="Previous banner"
+            className="absolute left-2 md:left-8 top-1/2 -translate-y-1/2 z-20 p-3 bg-white/20 backdrop-blur-sm rounded-full hover:bg-white/40 transition-colors text-white"
           >
             <ChevronLeft className="h-6 w-6" />
           </button>
           <button
             onClick={nextSlide}
-            className="absolute right-8 top-1/2 -translate-y-1/2 z-20 p-3 bg-white/20 backdrop-blur-sm rounded-full hover:bg-white/40 transition-colors text-white"
+            aria-label="Next banner"
+            className="absolute right-2 md:right-8 top-1/2 -translate-y-1/2 z-20 p-3 bg-white/20 backdrop-blur-sm rounded-full hover:bg-white/40 transition-colors text-white"
           >
             <ChevronRight className="h-6 w-6" />
           </button>
         </>
+      )}
+
+      {/* Pause / resume automatic rotation (not offered when rotation is off for reduced motion) */}
+      {heroes.length > 1 && !reduceMotion && (
+        <button
+          type="button"
+          onClick={() => setRotating((r) => !r)}
+          aria-label={rotating ? 'Pause automatic slide rotation' : 'Resume automatic slide rotation'}
+          className="absolute bottom-5 left-2 md:bottom-6 md:left-8 z-20 flex h-11 w-11 items-center justify-center bg-white/20 backdrop-blur-sm rounded-full hover:bg-white/40 transition-colors text-white"
+        >
+          {rotating ? <Pause className="h-5 w-5" aria-hidden="true" /> : <Play className="h-5 w-5" aria-hidden="true" />}
+        </button>
       )}
 
       {/* Slide Indicators */}
@@ -235,6 +263,8 @@ const HeroSection: React.FC<HeroSectionProps> = ({
             <button
               key={index}
               onClick={() => setCurrentIndex(index)}
+              aria-label={`Show banner ${index + 1} of ${heroes.length}`}
+              aria-current={index === currentIndex}
               className={`h-2 rounded-full transition-all ${
                 index === currentIndex
                   ? 'w-8 bg-brand-accent'
